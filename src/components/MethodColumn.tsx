@@ -1,6 +1,6 @@
 import { useStore } from "@nanostores/react";
-import { Grid, Target } from "lucide-react";
-import { processedResultsStore } from "../store";
+import { Grid, Loader2, Target } from "lucide-react";
+import { isProcessingStore, processedResultsStore } from "../store";
 
 interface MethodColumnProps {
 	title: string;
@@ -16,6 +16,7 @@ export const MethodColumn = ({
 	overrideSrc,
 }: MethodColumnProps) => {
 	const processedResults = useStore(processedResultsStore);
+	const isProcessing = useStore(isProcessingStore);
 	const url = overrideSrc ?? processedResults[method];
 	const isSkill = method === "skill";
 
@@ -42,6 +43,10 @@ export const MethodColumn = ({
 								className="pixelated-img"
 								width={zoom * imageWidth}
 							/>
+						) : isProcessing ? (
+							<div className="loading-placeholder">
+								<Loader2 size={16} className="animate-spin opacity-20" />
+							</div>
 						) : null}
 					</div>
 				</div>

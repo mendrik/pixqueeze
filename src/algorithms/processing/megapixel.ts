@@ -9,7 +9,6 @@ import {
 	toIndex,
 	toPoint,
 } from "../../utils/pixel-logic";
-// @ts-expect-error
 import DeblurWorker from "../../workers/deblur.worker?worker";
 
 /** Core megapixel scaler logic. */
@@ -29,9 +28,9 @@ export const processMegapixelToImageData = async (
 	const srcCanvas = document.createElement("canvas");
 	srcCanvas.width = srcW;
 	srcCanvas.height = srcH;
-	const srcCtx = srcCanvas.getContext("2d");
+	const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
 	if (!srcCtx) throw new Error("Source canvas context unavailable");
-
+	srcCtx.imageSmoothingEnabled = false;
 	srcCtx.drawImage(image, 0, 0);
 	const srcImageData = srcCtx.getImageData(0, 0, srcW, srcH);
 	const srcData = srcImageData.data;

@@ -51,9 +51,9 @@ export const processSuperpixelToImageData = (
 	const srcCanvas = document.createElement("canvas");
 	srcCanvas.width = srcW;
 	srcCanvas.height = srcH;
-	const srcCtx = srcCanvas.getContext("2d");
+	const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
 	if (!srcCtx) throw new Error("Source canvas context unavailable");
-
+	srcCtx.imageSmoothingEnabled = false;
 	srcCtx.drawImage(image, 0, 0);
 	const srcImageData = srcCtx.getImageData(0, 0, srcW, srcH);
 	const srcData = srcImageData.data;
@@ -120,19 +120,22 @@ export const processSuperpixelToImageData = (
 			];
 
 			while (clusterQueue.length > 0) {
-				clusterQueue.sort((a, b) => b.score - a.score);
-				const current = clusterQueue.shift();
+				const current = clusterQueue.pop();
 				if (!current) break;
 
 				if (visited[current.idx]) continue;
 				visited[current.idx] = 1;
 
 				const sIdx = current.idx * 4;
-				accR += srcData[sIdx];
-				accG += srcData[sIdx + 1];
-				accB += srcData[sIdx + 2];
-				accA += srcData[sIdx + 3];
-				count++;
+				const a = srcData[sIdx + 3];
+				if (a > 0) {
+					const weight = a / 255;
+					accR += srcData[sIdx] * weight;
+					accG += srcData[sIdx + 1] * weight;
+					accB += srcData[sIdx + 2] * weight;
+					accA += a;
+					count += weight;
+				}
 
 				const ns = neighbors(srcW, srcH, current.idx, 4);
 				for (const n of ns) {
@@ -163,6 +166,9 @@ export const processSuperpixelToImageData = (
 
 						const score = colorSimilarity * (1.0 + contrast * 5.0) * cogBoost;
 						clusterQueue.push({ idx: n, score });
+						if (clusterQueue.length > 32) {
+							clusterQueue.sort((a, b) => a.score - b.score);
+						}
 					}
 				}
 			}
@@ -174,20 +180,34 @@ export const processSuperpixelToImageData = (
 
 					visited[cIdx] = 1;
 					const sIdx = cIdx * 4;
-					accR += srcData[sIdx];
-					accG += srcData[sIdx + 1];
-					accB += srcData[sIdx + 2];
-					accA += srcData[sIdx + 3];
-					count++;
+					const a = srcData[sIdx + 3];
+					if (a > 0) {
+						const weight = a / 255;
+						accR += srcData[sIdx] * weight;
+						accG += srcData[sIdx + 1] * weight;
+						accB += srcData[sIdx + 2] * weight;
+						accA += a;
+						count += weight;
+					}
 				}
 			}
 
+			let totalCountInCell =
+				(cellMaxX - cellMinX + 1) * (cellMaxY - cellMinY + 1);
+			if (totalCountInCell === 0) totalCountInCell = 1;
+
 			const o = (ty * targetW + tx) * 4;
-			const div = count || 1;
-			outData[o] = (accR / div) | 0;
-			outData[o + 1] = (accG / div) | 0;
-			outData[o + 2] = (accB / div) | 0;
-			outData[o + 3] = (accA / div) | 0;
+			if (count > 0) {
+				outData[o] = (accR / count) | 0;
+				outData[o + 1] = (accG / count) | 0;
+				outData[o + 2] = (accB / count) | 0;
+				outData[o + 3] = (accA / totalCountInCell) | 0;
+			} else {
+				outData[o] = 0;
+				outData[o + 1] = 0;
+				outData[o + 2] = 0;
+				outData[o + 3] = 0;
+			}
 		}
 	}
 

@@ -8,6 +8,7 @@ import {
 	deblurMethodStore,
 	imageStore,
 	isProcessingStore,
+	maxEdgeStore,
 	processedResultsStore,
 	progressStore,
 	targetEdgeStore,
@@ -27,6 +28,11 @@ export const App = () => {
 	const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
+
+		// Reset state for new upload
+		processedResultsStore.set({});
+		progressStore.set(0);
+
 		const reader = new FileReader();
 		reader.onload = (event) => {
 			const img = new Image();
@@ -49,12 +55,29 @@ export const App = () => {
 					if (ctx) {
 						ctx.drawImage(img, 0, 0, targetW, targetH);
 						const scaledImg = new Image();
-						scaledImg.onload = () => imageStore.set(scaledImg);
+						scaledImg.onload = () => {
+							const mEdge = Math.max(scaledImg.width, scaledImg.height);
+							maxEdgeStore.set(mEdge);
+							if (targetEdgeStore.get() > mEdge) {
+								targetEdgeStore.set(mEdge);
+							}
+							imageStore.set(scaledImg);
+						};
 						scaledImg.src = canvas.toDataURL();
 					} else {
+						const mEdge = Math.max(img.width, img.height);
+						maxEdgeStore.set(mEdge);
+						if (targetEdgeStore.get() > mEdge) {
+							targetEdgeStore.set(mEdge);
+						}
 						imageStore.set(img);
 					}
 				} else {
+					const mEdge = Math.max(img.width, img.height);
+					maxEdgeStore.set(mEdge);
+					if (targetEdgeStore.get() > mEdge) {
+						targetEdgeStore.set(mEdge);
+					}
 					imageStore.set(img);
 				}
 			};

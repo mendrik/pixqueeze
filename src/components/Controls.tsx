@@ -4,6 +4,7 @@ import {
 	bilateralStrengthStore,
 	deblurMethodStore,
 	isProcessingStore,
+	maxEdgeStore,
 	targetEdgeStore,
 	waveletStrengthStore,
 } from "../store";
@@ -19,6 +20,7 @@ export const Controls = ({
 	const bilateralStrength = useStore(bilateralStrengthStore);
 	const waveletStrength = useStore(waveletStrengthStore);
 	const isProcessing = useStore(isProcessingStore);
+	const maxEdge = useStore(maxEdgeStore);
 
 	return (
 		<div className="controls-section">
@@ -30,7 +32,7 @@ export const Controls = ({
 				<input
 					type="range"
 					min="16"
-					max="128"
+					max={maxEdge}
 					step="1"
 					value={targetEdge}
 					onChange={(e) =>

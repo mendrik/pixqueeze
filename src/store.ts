@@ -13,3 +13,4 @@ export const waveletStrengthStore = atom<number>(0.25);
 export const deblurMethodStore = atom<"none" | "bilateral" | "wavelet">(
 	"wavelet",
 );
+export const maxEdgeStore = atom<number>(128);
