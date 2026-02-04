@@ -4,21 +4,23 @@ export type RGB = { r: number; g: number; b: number };
 export function extractPalette(imageData: ImageData): RGB[] {
 	const { data, width, height } = imageData;
 	const palette: RGB[] = [];
-	const seen = new Set<string>();
+	const seen = new Set<number>();
+	const data32 = new Uint32Array(data.buffer);
 
 	for (let i = 0; i < width * height; i++) {
-		const idx = i * 4;
-		const r = data[idx];
-		const g = data[idx + 1];
-		const b = data[idx + 2];
-		const a = data[idx + 3];
+		const val = data32[i];
+		const a = (val >> 24) & 0xff;
 
 		if (a === 0) continue;
 
-		const key = `${r},${g},${b}`;
-		if (!seen.has(key)) {
-			seen.add(key);
-			palette.push({ r, g, b });
+		const rgb = val & 0xffffff;
+		if (!seen.has(rgb)) {
+			seen.add(rgb);
+			palette.push({
+				r: val & 0xff,
+				g: (val >> 8) & 0xff,
+				b: (val >> 16) & 0xff,
+			});
 		}
 	}
 

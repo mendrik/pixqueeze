@@ -8,37 +8,43 @@ export const applyBilateralFilter = (
 	const width = imageData.width;
 	const height = imageData.height;
 	const srcData = imageData.data;
+	const srcData32 = new Uint32Array(srcData.buffer);
 	const outData = new Uint8ClampedArray(srcData.length);
+	const outData32 = new Uint32Array(outData.buffer);
 
 	const spatialSigma = 2.0 * (1 + strength * 2);
 	const rangeSigma = 25.0 * (1 + strength);
 	const windowRadius = Math.ceil(spatialSigma * 2);
 
 	const spatialWeights = new Float32Array((windowRadius * 2 + 1) ** 2);
+	const spatialSigmaSq2 = 2 * spatialSigma * spatialSigma;
 	let idx = 0;
 	for (let dy = -windowRadius; dy <= windowRadius; dy++) {
 		for (let dx = -windowRadius; dx <= windowRadius; dx++) {
 			const dist = dx * dx + dy * dy;
-			spatialWeights[idx++] = Math.exp(
-				-dist / (2 * spatialSigma * spatialSigma),
-			);
+			spatialWeights[idx++] = Math.exp(-dist / spatialSigmaSq2);
 		}
+	}
+
+	// Range weights lookup table
+	const rangeSigmaSq2 = 2 * rangeSigma * rangeSigma;
+	const maxColorDist = 255 * 255 * 3;
+	const rangeLookup = new Float32Array(maxColorDist + 1);
+	for (let i = 0; i <= maxColorDist; i++) {
+		rangeLookup[i] = Math.exp(-i / rangeSigmaSq2);
 	}
 
 	for (let y = 0; y < height; y++) {
 		for (let x = 0; x < width; x++) {
-			const centerIdx = (y * width + x) * 4;
-			const centerR = srcData[centerIdx];
-			const centerG = srcData[centerIdx + 1];
-			const centerB = srcData[centerIdx + 2];
-			const centerA = srcData[centerIdx + 3];
-
-			outData[centerIdx + 3] = centerA;
+			const centerPos = y * width + x;
+			const centerVal = srcData32[centerPos];
+			const centerR = centerVal & 0xff;
+			const centerG = (centerVal >> 8) & 0xff;
+			const centerB = (centerVal >> 16) & 0xff;
+			const centerA = (centerVal >> 24) & 0xff;
 
 			if (centerA < 10) {
-				outData[centerIdx] = centerR;
-				outData[centerIdx + 1] = centerG;
-				outData[centerIdx + 2] = centerB;
+				outData32[centerPos] = centerVal;
 				continue;
 			}
 
@@ -55,6 +61,7 @@ export const applyBilateralFilter = (
 					continue;
 				}
 
+				const rowOffset = ny * width;
 				for (let dx = -windowRadius; dx <= windowRadius; dx++) {
 					const nx = x + dx;
 					if (nx < 0 || nx >= width) {
@@ -62,30 +69,22 @@ export const applyBilateralFilter = (
 						continue;
 					}
 
-					const neighborIdx = (ny * width + nx) * 4;
-					const nR = srcData[neighborIdx];
-					const nG = srcData[neighborIdx + 1];
-					const nB = srcData[neighborIdx + 2];
-					const nA = srcData[neighborIdx + 3];
-
+					const nVal = srcData32[rowOffset + nx];
+					const nA = (nVal >> 24) & 0xff;
 					if (nA < 10) {
 						weightIdx++;
 						continue;
 					}
 
-					const dr = nR - centerR;
-					const dg = nG - centerG;
-					const db = nB - centerB;
+					const dr = (nVal & 0xff) - centerR;
+					const dg = ((nVal >> 8) & 0xff) - centerG;
+					const db = ((nVal >> 16) & 0xff) - centerB;
 					const colorDist = dr * dr + dg * dg + db * db;
-					const rangeWeight = Math.exp(
-						-colorDist / (2 * rangeSigma * rangeSigma),
-					);
+					const weight = spatialWeights[weightIdx] * rangeLookup[colorDist];
 
-					const weight = spatialWeights[weightIdx] * rangeWeight;
-
-					sumR += nR * weight;
-					sumG += nG * weight;
-					sumB += nB * weight;
+					sumR += (nVal & 0xff) * weight;
+					sumG += ((nVal >> 8) & 0xff) * weight;
+					sumB += ((nVal >> 16) & 0xff) * weight;
 					sumWeight += weight;
 
 					weightIdx++;
@@ -93,13 +92,13 @@ export const applyBilateralFilter = (
 			}
 
 			if (sumWeight > 0) {
-				outData[centerIdx] = Math.round(sumR / sumWeight);
-				outData[centerIdx + 1] = Math.round(sumG / sumWeight);
-				outData[centerIdx + 2] = Math.round(sumB / sumWeight);
+				const invWeight = 1.0 / sumWeight;
+				const fr = (sumR * invWeight) | 0;
+				const fg = (sumG * invWeight) | 0;
+				const fb = (sumB * invWeight) | 0;
+				outData32[centerPos] = (centerA << 24) | (fb << 16) | (fg << 8) | fr;
 			} else {
-				outData[centerIdx] = centerR;
-				outData[centerIdx + 1] = centerG;
-				outData[centerIdx + 2] = centerB;
+				outData32[centerPos] = centerVal;
 			}
 		}
 	}

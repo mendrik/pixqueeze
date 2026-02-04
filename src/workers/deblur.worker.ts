@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import type { RawImageData } from "../types";
 import {
 	applyBilateralFilter,
 	applyUnsharpMask,
@@ -6,26 +7,49 @@ import {
 import { applyWaveletSharpen } from "../utils/wavelet-sharpen";
 
 const api = {
-	applyBilateral(imageData: ImageData, strength: number): ImageData {
+	applyBilateral(imageData: RawImageData, strength: number): RawImageData {
 		console.log("[Worker] applying Bilateral Filter");
-		// Apply bilateral filter for edge-preserving smoothing
-		const filtered = applyBilateralFilter(imageData, strength);
-		// Follow with subtle unsharp mask for crispness
-		return applyUnsharpMask(filtered, strength * 0.5);
+		// @ts-expect-error: TS definition mismatch in Worker
+		const img = new ImageData(
+			imageData.data,
+			imageData.width,
+			imageData.height,
+		);
+		const filtered = applyBilateralFilter(img, strength);
+		const result = applyUnsharpMask(filtered, strength * 0.5);
+		const raw: RawImageData = {
+			data: result.data,
+			width: result.width,
+			height: result.height,
+		};
+		// biome-ignore lint/suspicious/noExplicitAny: Transfer
+		return Comlink.transfer(raw, [raw.data.buffer]) as any;
 	},
 
 	applyWavelet(
-		imageData: ImageData,
+		imageData: RawImageData,
 		strength: number,
 		clamp: number,
-	): ImageData {
+	): RawImageData {
 		console.log(
 			`[Worker] applyWavelet called. Strength: ${strength}, Clamp: ${clamp}`,
 		);
+		// @ts-expect-error: TS definition mismatch in Worker
+		const img = new ImageData(
+			imageData.data,
+			imageData.width,
+			imageData.height,
+		);
 		try {
-			const result = applyWaveletSharpen(imageData, strength, clamp);
+			const result = applyWaveletSharpen(img, strength, clamp);
 			console.log("[Worker] applyWavelet success");
-			return result;
+			const raw: RawImageData = {
+				data: result.data,
+				width: result.width,
+				height: result.height,
+			};
+			// biome-ignore lint/suspicious/noExplicitAny: Transfer
+			return Comlink.transfer(raw, [raw.data.buffer]) as any;
 		} catch (e) {
 			console.error("[Worker] applyWavelet failed:", e);
 			throw e;

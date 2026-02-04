@@ -10,11 +10,51 @@ export interface ScalingAlgorithm {
 	) => Promise<string>;
 }
 
+export interface PaletteColor {
+	r: number;
+	g: number;
+	b: number;
+}
+
+export interface RawImageData {
+	data: Uint8ClampedArray;
+	width: number;
+	height: number;
+}
+
 export interface DeblurWorkerApi {
-	applyBilateral(imageData: ImageData, strength: number): Promise<ImageData>;
+	applyBilateral(
+		imageData: RawImageData,
+		strength: number,
+	): Promise<RawImageData>;
 	applyWavelet(
-		imageData: ImageData,
+		imageData: RawImageData,
 		strength: number,
 		clamp: number,
-	): Promise<ImageData>;
+	): Promise<RawImageData>;
+}
+
+export interface ScalerWorkerApi {
+	processMegapixel(
+		input: {
+			data: Uint8ClampedArray;
+			width: number;
+			height: number;
+		},
+		targetW: number,
+		targetH: number,
+		threshold: number,
+		palette: PaletteColor[],
+	): Promise<RawImageData>;
+
+	processPaletteArea(
+		input: {
+			data: Uint8ClampedArray;
+			width: number;
+			height: number;
+		},
+		targetW: number,
+		targetH: number,
+		palette: PaletteColor[],
+	): Promise<RawImageData>;
 }

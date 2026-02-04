@@ -11,115 +11,93 @@ export interface WaveletSharpenOptions {
 }
 
 /** Separable 3x3 box blur. */
+/** Separable 3x3 box blur. Optimized. */
 function fastBlur(src: Float32Array, dst: Float32Array, w: number, h: number) {
-	// Horizontal pass
-	const temp = new Float32Array(src.length);
+	const len = w * h * 4;
+	const temp = new Float32Array(len);
 
 	// H-pass
 	for (let y = 0; y < h; y++) {
 		const yOff = y * w;
 		for (let x = 0; x < w; x++) {
-			const idx = (yOff + x) * 4;
-
-			// Mirror edge handling by clamping index
+			const idx = (yOff + x) << 2;
 			const xm1 = x > 0 ? x - 1 : 0;
-			const idxL = (yOff + xm1) * 4;
-
 			const xp1 = x < w - 1 ? x + 1 : w - 1;
-			const idxR = (yOff + xp1) * 4;
+			const idxL = (yOff + xm1) << 2;
+			const idxR = (yOff + xp1) << 2;
 
-			for (let c = 0; c < 4; c++) {
-				temp[idx + c] =
-					(src[idxL + c] + 2 * src[idx + c] + src[idxR + c]) * 0.25;
-			}
+			temp[idx] = (src[idxL] + 2 * src[idx] + src[idxR]) * 0.25;
+			temp[idx + 1] = (src[idxL + 1] + 2 * src[idx + 1] + src[idxR + 1]) * 0.25;
+			temp[idx + 2] = (src[idxL + 2] + 2 * src[idx + 2] + src[idxR + 2]) * 0.25;
+			temp[idx + 3] = (src[idxL + 3] + 2 * src[idx + 3] + src[idxR + 3]) * 0.25;
 		}
 	}
 
 	// V-pass
-	for (let y = 0; y < h; y++) {
-		const yOff = y * w;
+	for (let x = 0; x < w; x++) {
+		for (let y = 0; y < h; y++) {
+			const idx = (y * w + x) << 2;
+			const ym1 = y > 0 ? y - 1 : 0;
+			const yp1 = y < h - 1 ? y + 1 : h - 1;
+			const idxT = (ym1 * w + x) << 2;
+			const idxB = (yp1 * w + x) << 2;
 
-		// y-1
-		const ym1 = y > 0 ? y - 1 : 0;
-		const yOffT = ym1 * w;
-
-		// y+1
-		const yp1 = y < h - 1 ? y + 1 : h - 1;
-		const yOffB = yp1 * w;
-
-		for (let x = 0; x < w; x++) {
-			const idx = (yOff + x) * 4;
-			const idxT = (yOffT + x) * 4;
-			const idxB = (yOffB + x) * 4;
-
-			for (let c = 0; c < 4; c++) {
-				dst[idx + c] =
-					(temp[idxT + c] + 2 * temp[idx + c] + temp[idxB + c]) * 0.25;
-			}
+			dst[idx] = (temp[idxT] + 2 * temp[idx] + temp[idxB]) * 0.25;
+			dst[idx + 1] =
+				(temp[idxT + 1] + 2 * temp[idx + 1] + temp[idxB + 1]) * 0.25;
+			dst[idx + 2] =
+				(temp[idxT + 2] + 2 * temp[idx + 2] + temp[idxB + 2]) * 0.25;
+			dst[idx + 3] =
+				(temp[idxT + 3] + 2 * temp[idx + 3] + temp[idxB + 3]) * 0.25;
 		}
 	}
 }
 
 /**
  * Soft limiting function (Rational Sigmoid).
- * @param x Input value
- * @param limit Max amplitude
- * @returns mapped value
  */
 function softLimit(x: number, limit: number): number {
-	if (limit <= 0.0001) return 0;
-	return x / (1 + Math.abs(x) / limit);
+	const absX = x < 0 ? -x : x;
+	return x / (1 + absX / limit);
 }
 
 export function applyWaveletSharpen(
 	imageData: ImageData,
-	strength = 0.25, // 0.0 to 1.0+
-	clampMax = 0.15, // Max change in brightness (0-1). Increased default slightly.
+	strength = 0.25,
+	clampMax = 0.15,
 ): ImageData {
 	const w = imageData.width;
 	const h = imageData.height;
 	const len = w * h * 4;
 
 	const src = new Float32Array(len);
+	const data = imageData.data;
+	const inv255 = 1.0 / 255.0;
 	for (let i = 0; i < len; i++) {
-		src[i] = imageData.data[i] / 255.0;
+		src[i] = data[i] * inv255;
 	}
 
 	const L1 = new Float32Array(len);
 	fastBlur(src, L1, w, h);
 
-	fastBlur(src, L1, w, h);
-
 	const output = new Uint8ClampedArray(len);
-
 	const gain = strength * 2.0;
 
 	for (let i = 0; i < len; i += 4) {
+		// RGB channels
 		for (let c = 0; c < 3; c++) {
-			// RGB
 			const idx = i + c;
-			const valL0 = src[idx];
-			const valL1 = L1[idx];
+			const d1 = src[idx] - L1[idx];
+			const boosted = softLimit(d1 * gain, clampMax);
+			let res = src[idx] + boosted;
 
-			// D1 calculation (High Frequency)
-			const d1 = valL0 - valL1;
-
-			// Boost
-			// We adding EXTRA detail to the original image.
-			let boost = d1 * gain;
-
-			boost = softLimit(boost, clampMax);
-
-			let res = valL0 + boost;
-
-			// Clamp to 0..1
 			if (res < 0) res = 0;
-			if (res > 1) res = 1;
+			else if (res > 1) res = 1;
 
 			output[idx] = (res * 255.0 + 0.5) | 0;
 		}
-		// Alpha copy
-		output[i + 3] = imageData.data[i + 3];
+		// Alpha channel
+		output[i + 3] = data[i + 3];
 	}
 
 	return new ImageData(output, w, h);
