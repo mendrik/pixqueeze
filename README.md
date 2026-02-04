@@ -1,4 +1,4 @@
-# 🦊 Pixqueeze - Superpixel Scaling
+# Pixqueeze - Superpixel Scaling
 
 **Pixqueeze** is a premium web-based image scaling application designed for high-quality upscaling of low-resolution images and pixel art. By utilizing advanced superpixel algorithms and intelligent post-processing, Pixqueeze preserves sharp edges and distinct features that traditional scaling methods often blur.
 
@@ -30,27 +30,32 @@ Enhance your results further with integrated processing steps:
 
 ## 📸 Screen Shots & Samples
 
-<!-- Placeholder for Main UI Screenshot -->
-<div align="center">
-  <img src="https://via.placeholder.com/800x450?text=Main+Application+UI+Screenshot" alt="Pixqueeze UI" width="800">
-  <p><i>The intuitive Pixqueeze interface featuring live comparison grid.</i></p>
+<div>
+  <p>Source images</p>
+  <img width="182" height="128" alt="cat" src="https://github.com/user-attachments/assets/1b87dc41-e1ba-4663-85f8-ef6eb904441b" />
+  <img width="55" height="58" alt="pixel-fox" src="https://github.com/user-attachments/assets/ef7ca3e3-a705-48f4-b8a1-f4c01d9c110a" />
+  <img width="192" alt="mario" src="https://github.com/user-attachments/assets/6a57304e-8518-4827-983c-9d2f66a1ce1e" />
 </div>
 
-<br>
+<p>Downscaled to 32 or 64 pixels respectively</p>
+
+<div align="center">
+  <img width="2335" height="289" alt="image" src="https://github.com/user-attachments/assets/fa08504f-600e-4d84-b5bd-7605ca9bae38" />
+</div>
 
 <!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img src="https://via.placeholder.com/800x300?text=Scaling+Comparison+Samples+(Nearest+vs+Bicubic+vs+Superpixel)" alt="Comparison Samples" width="800">
-  <p><i>Comparison between traditional methods and Pixqueeze Superpixel scaling.</i></p>
+  <img width="2385" height="319" alt="image" src="https://github.com/user-attachments/assets/07d2378f-e1cf-4783-a23d-26e01f5460fb" />
+</div>
+
+<!-- Placeholder for Main UI Screenshot -->
+<div align="center">
+  <img width="2385" height="278" alt="image" src="https://github.com/user-attachments/assets/b3962347-0dc8-4c30-a463-e915b2867b89" />
 </div>
 
 <br>
 
-<!-- Placeholder for Palette Optimization Samples -->
-<div align="center">
-  <img src="https://via.placeholder.com/800x300?text=Megapixel+Palette+Optimization+Demo" alt="Palette Optimization" width="800">
-  <p><i>The power of Megapixel scaling with integrated palette optimization.</i></p>
-</div>
+<br>
 
 ---
 
@@ -62,7 +67,7 @@ Pixqueeze is built with a modern, performance-first tech stack:
 - **Build Tool**: [Vite](https://vitejs.dev/)
 - **State Management**: [Nanostores](https://github.com/nanostores/nanostores) (Atomic, lightweight state)
 - **Concurrency**: [Comlink](https://github.com/GoogleChromeLabs/comlink) (Web Workers)
-- **Styling**: Vanilla CSS (Premium, custom-crafted aesthetics)
+- **Styling**: Vanilla CSS
 - **Tooling**: [Biome](https://biomejs.dev/) (Linting & Formatting), [Vitest](https://vitest.dev/) (Testing)
 
 ---
@@ -70,7 +75,7 @@ Pixqueeze is built with a modern, performance-first tech stack:
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (Project uses pnpm)
+- [Node.js](https://nodejs.org/)
 - [pnpm](https://pnpm.io/)
 
 ### Installation
