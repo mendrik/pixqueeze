@@ -30,27 +30,19 @@ Enhance your results further with integrated processing steps:
 
 ## 📸 Screen Shots & Samples
 
-<!-- Placeholder for Main UI Screenshot -->
-<div align="center">
-  <img src="https://via.placeholder.com/800x450?text=Main+Application+UI+Screenshot" alt="Pixqueeze UI" width="800">
-  <p><i>The intuitive Pixqueeze interface featuring live comparison grid.</i></p>
-</div>
-
-<br>
-
 <!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img src="https://via.placeholder.com/800x300?text=Scaling+Comparison+Samples+(Nearest+vs+Bicubic+vs+Superpixel)" alt="Comparison Samples" width="800">
-  <p><i>Comparison between traditional methods and Pixqueeze Superpixel scaling.</i></p>
+  <img width="2356" height="688" alt="image" src="https://github.com/user-attachments/assets/7fa804db-eb63-4b27-b535-a9578d100dcb" />
+</div>
+
+<!-- Placeholder for Main UI Screenshot -->
+<div align="center">
+  <img width="2341" height="400" alt="image" src="https://github.com/user-attachments/assets/bcaca175-35cb-4a48-b592-dba2d9a9c3d7" />
 </div>
 
 <br>
 
-<!-- Placeholder for Palette Optimization Samples -->
-<div align="center">
-  <img src="https://via.placeholder.com/800x300?text=Megapixel+Palette+Optimization+Demo" alt="Palette Optimization" width="800">
-  <p><i>The power of Megapixel scaling with integrated palette optimization.</i></p>
-</div>
+<br>
 
 ---
 
