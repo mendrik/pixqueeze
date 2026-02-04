@@ -3,6 +3,7 @@ import { useCallback, useEffect } from "react";
 import { SCALERS } from "./algorithms";
 import { Controls } from "./components/Controls";
 import { ResultsView } from "./components/ResultsView";
+import logo from "./assets/fox-clean.png";
 import {
 	bilateralStrengthStore,
 	deblurMethodStore,
@@ -126,7 +127,7 @@ export const App = () => {
 				<header className="app-header">
 					<div className="logo-section">
 						<div className="logo-icon-wrapper">
-							<img src="/fox-clean.png" alt="Logo" />
+							<img src={logo} alt="Logo" />
 						</div>
 						<div className="logo-text">
 							<h1 className="app-title">Pixqueeze</h1>
