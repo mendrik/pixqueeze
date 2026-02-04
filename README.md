@@ -67,7 +67,7 @@ Pixqueeze is built with a modern, performance-first tech stack:
 - **Build Tool**: [Vite](https://vitejs.dev/)
 - **State Management**: [Nanostores](https://github.com/nanostores/nanostores) (Atomic, lightweight state)
 - **Concurrency**: [Comlink](https://github.com/GoogleChromeLabs/comlink) (Web Workers)
-- **Styling**: Vanilla CSS (Premium, custom-crafted aesthetics)
+- **Styling**: Vanilla CSS
 - **Tooling**: [Biome](https://biomejs.dev/) (Linting & Formatting), [Vitest](https://vitest.dev/) (Testing)
 
 ---
@@ -75,7 +75,7 @@ Pixqueeze is built with a modern, performance-first tech stack:
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (Project uses pnpm)
+- [Node.js](https://nodejs.org/)
 - [pnpm](https://pnpm.io/)
 
 ### Installation
