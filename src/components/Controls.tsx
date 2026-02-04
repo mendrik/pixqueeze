@@ -11,7 +11,9 @@ import { HeaderPreview } from "./HeaderPreview";
 
 export const Controls = ({
 	onUpload,
-}: { onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void }) => {
+}: {
+	onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) => {
 	const targetEdge = useStore(targetEdgeStore);
 	const deblurMethod = useStore(deblurMethodStore);
 	const bilateralStrength = useStore(bilateralStrengthStore);

@@ -9,7 +9,7 @@ import {
 	toIndex,
 	toPoint,
 } from "../../utils/pixel-logic";
-// @ts-ignore
+// @ts-expect-error
 import DeblurWorker from "../../workers/deblur.worker?worker";
 
 /** Core megapixel scaler logic. */

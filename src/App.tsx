@@ -1,5 +1,4 @@
 import { useStore } from "@nanostores/react";
-import { Zap } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { SCALERS } from "./algorithms";
 import { Controls } from "./components/Controls";
