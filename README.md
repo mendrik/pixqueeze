@@ -30,14 +30,18 @@ Enhance your results further with integrated processing steps:
 
 ## 📸 Screen Shots & Samples
 
+<div align="center">
+  <img width="2335" height="289" alt="image" src="https://github.com/user-attachments/assets/fa08504f-600e-4d84-b5bd-7605ca9bae38" />
+</div>
+
 <!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img width="2356" height="688" alt="image" src="https://github.com/user-attachments/assets/7fa804db-eb63-4b27-b535-a9578d100dcb" />
+  <img width="2385" height="319" alt="image" src="https://github.com/user-attachments/assets/07d2378f-e1cf-4783-a23d-26e01f5460fb" />
 </div>
 
 <!-- Placeholder for Main UI Screenshot -->
 <div align="center">
-  <img width="2341" height="400" alt="image" src="https://github.com/user-attachments/assets/bcaca175-35cb-4a48-b592-dba2d9a9c3d7" />
+  <img width="2385" height="278" alt="image" src="https://github.com/user-attachments/assets/b3962347-0dc8-4c30-a463-e915b2867b89" />
 </div>
 
 <br>
