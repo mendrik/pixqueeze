@@ -1,4 +1,4 @@
-import { atom, computed } from "nanostores";
+import { atom } from "nanostores";
 
 export type Point = Readonly<{ x: number; y: number }>;
 
@@ -12,29 +12,4 @@ export const bilateralStrengthStore = atom<number>(0.0);
 export const waveletStrengthStore = atom<number>(0.25);
 export const deblurMethodStore = atom<"none" | "bilateral" | "wavelet">(
 	"wavelet",
-);
-
-export const scalingParams = computed(
-	[
-		imageStore,
-		targetEdgeStore,
-		targetEdgeStore,
-		bilateralStrengthStore,
-		waveletStrengthStore,
-		deblurMethodStore,
-	],
-	(
-		image,
-		targetEdge,
-		_te,
-		bilateralStrength,
-		waveletStrength,
-		deblurMethod,
-	) => ({
-		image,
-		targetEdge,
-		bilateralStrength,
-		waveletStrength,
-		deblurMethod,
-	}),
 );

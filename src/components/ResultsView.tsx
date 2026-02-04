@@ -1,7 +1,11 @@
+import { useStore } from "@nanostores/react";
 import { ImageIcon } from "lucide-react";
+import { targetEdgeStore } from "../store";
 import { MethodColumn } from "./MethodColumn";
 
 export const ResultsView = ({ hasImage }: { hasImage: boolean }) => {
+	const targetEdge = useStore(targetEdgeStore);
+
 	if (!hasImage) {
 		return (
 			<div className="empty-state">
@@ -13,10 +17,18 @@ export const ResultsView = ({ hasImage }: { hasImage: boolean }) => {
 
 	return (
 		<div className="results-grid">
-			<MethodColumn title="Raw Nearest" method="nearest" />
-			<MethodColumn title="High Bicubic" method="bicubic" />
-			<MethodColumn title="Superpixel (Smart)" method="grid-superpixel-smart" />
-			<MethodColumn title="Megapixel (Palette)" method="megapixel" />
+			<MethodColumn title="Nearest" method="nearest" imageWidth={targetEdge} />
+			<MethodColumn title="Bicubic" method="bicubic" imageWidth={targetEdge} />
+			<MethodColumn
+				title="Superpixel scaling (Draft)"
+				method="grid-superpixel-smart"
+				imageWidth={targetEdge}
+			/>
+			<MethodColumn
+				title="Superpixel scaling"
+				method="megapixel"
+				imageWidth={targetEdge}
+			/>
 		</div>
 	);
 };

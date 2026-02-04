@@ -1,7 +1,7 @@
 import type { ScalingAlgorithm } from "../types";
 
 export const NearestScaler: ScalingAlgorithm = {
-	name: "Raw Nearest",
+	name: "Nearest",
 	id: "nearest",
 	process: (
 		image: HTMLImageElement,

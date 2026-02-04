@@ -10,7 +10,7 @@ import {
 
 /** Grid-constrained scored-growth superpixel downscaling. */
 export const SuperpixelScaler: ScalingAlgorithm = {
-	name: "Grid Superpixel Downscale (Smart)",
+	name: "Superpixel scaling (Draft)",
 	id: "grid-superpixel-smart",
 
 	process: (

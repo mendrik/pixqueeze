@@ -7,7 +7,7 @@ import { processMegapixelToImageData } from "./processing/megapixel";
  * palette extracted and optimized from the source image.
  */
 export const MegapixelScaler: ScalingAlgorithm = {
-	name: "Megapixel (Palette Snap)",
+	name: "Superpixel scaling",
 	id: "megapixel",
 
 	process: async (

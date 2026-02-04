@@ -5,12 +5,14 @@ import { processedResultsStore } from "../store";
 interface MethodColumnProps {
 	title: string;
 	method: string;
+	imageWidth: number;
 	overrideSrc?: string;
 }
 
 export const MethodColumn = ({
 	title,
 	method,
+	imageWidth,
 	overrideSrc,
 }: MethodColumnProps) => {
 	const processedResults = useStore(processedResultsStore);
@@ -26,28 +28,21 @@ export const MethodColumn = ({
 				</h3>
 			</div>
 
-			{[1, 2, 4].map((zoom) => (
+			{[1, 2, 3].map((zoom) => (
 				<div
 					key={zoom}
 					className={`zoom-container ${isSkill ? "is-skill" : ""}`}
 				>
 					<span className="zoom-label">{zoom}x View</span>
-					<div
-						className="zoom-viewport"
-						style={{ backgroundColor: "rgb(60, 60, 60)" }}
-					>
+					<div className="zoom-viewport">
 						{url ? (
 							<img
 								src={url}
 								alt={title}
 								className="pixelated-img"
-								style={{
-									transform: `scale(${zoom})`,
-								}}
+								width={zoom * imageWidth}
 							/>
-						) : (
-							<div className="pulse-placeholder" />
-						)}
+						) : null}
 					</div>
 				</div>
 			))}

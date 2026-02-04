@@ -1,7 +1,7 @@
 import type { ScalingAlgorithm } from "../types";
 
 export const BicubicScaler: ScalingAlgorithm = {
-	name: "High Bicubic",
+	name: "Bicubic",
 	id: "bicubic",
 	process: (
 		image: HTMLImageElement,

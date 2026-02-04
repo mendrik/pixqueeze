@@ -104,11 +104,11 @@ export const App = () => {
 				<header className="app-header">
 					<div className="logo-section">
 						<div className="logo-icon-wrapper">
-							<Zap size={24} className="logo-icon" />
+							<img src="/fox-clean.png" alt="Logo" />
 						</div>
 						<div className="logo-text">
-							<h1 className="app-title">PIXEL.KERN</h1>
-							<p className="app-subtitle">Matrix Pattern Synthesis V7</p>
+							<h1 className="app-title">Pixqueeze</h1>
+							<p className="app-subtitle">Superpixel scaling</p>
 						</div>
 					</div>
 
