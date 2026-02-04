@@ -242,6 +242,8 @@ body {
 .results-grid {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
+	justify-content: flex-start;
+	align-items: center;
 	gap: 1rem;
 	animation: fadeIn 0.7s ease-in-out;
 	padding-bottom: 2rem;
@@ -250,7 +252,7 @@ body {
 
 @media (min-width: 768px) {
 	.results-grid {
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(5, 1fr);
 		gap: 1.5rem;
 	}
 }

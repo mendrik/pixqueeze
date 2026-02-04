@@ -18,14 +18,19 @@ export const ResultsView = ({ hasImage }: { hasImage: boolean }) => {
 	return (
 		<div className="results-grid">
 			<MethodColumn title="Nearest" method="nearest" imageWidth={targetEdge} />
+			<MethodColumn
+				title="Palette-Aware"
+				method="palette-area"
+				imageWidth={targetEdge}
+			/>
 			<MethodColumn title="Bicubic" method="bicubic" imageWidth={targetEdge} />
 			<MethodColumn
-				title="Superpixel scaling (Draft)"
+				title="Superpixel"
 				method="grid-superpixel-smart"
 				imageWidth={targetEdge}
 			/>
 			<MethodColumn
-				title="Superpixel scaling"
+				title="Palettesnap"
 				method="megapixel"
 				imageWidth={targetEdge}
 			/>
