@@ -30,6 +30,15 @@ Enhance your results further with integrated processing steps:
 
 ## 📸 Screen Shots & Samples
 
+<div>
+  <p>Source images</p>
+  <img width="182" height="128" alt="cat" src="https://github.com/user-attachments/assets/1b87dc41-e1ba-4663-85f8-ef6eb904441b" />
+  <img width="55" height="58" alt="pixel-fox" src="https://github.com/user-attachments/assets/ef7ca3e3-a705-48f4-b8a1-f4c01d9c110a" />
+  <img width="192" alt="mario" src="https://github.com/user-attachments/assets/6a57304e-8518-4827-983c-9d2f66a1ce1e" />
+</div>
+
+<p>Downscaled to 32 or 64 pixels respectively</p>
+
 <div align="center">
   <img width="2335" height="289" alt="image" src="https://github.com/user-attachments/assets/fa08504f-600e-4d84-b5bd-7605ca9bae38" />
 </div>
