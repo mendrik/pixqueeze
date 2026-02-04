@@ -1,19 +1,4 @@
-/**
- * Bilateral Filter - Edge-preserving smoothing
- * Much better for pixel art than FFT because it smooths while preserving sharp edges
- */
-
-/**
- * Applies a bilateral filter to smooth the image while preserving edges.
- * This is superior to FFT for pixel art because it:
- * - Preserves sharp color boundaries (edges)
- * - Reduces noise and jaggies
- * - Doesn't introduce ringing artifacts like FFT
- *
- * @param imageData Source ImageData
- * @param strength Strength of the effect (0.0 to 1.0)
- * @returns New ImageData with the effect applied
- */
+/** Edge-preserving bilateral filter. */
 export const applyBilateralFilter = (
 	imageData: ImageData,
 	strength: number,
@@ -25,15 +10,10 @@ export const applyBilateralFilter = (
 	const srcData = imageData.data;
 	const outData = new Uint8ClampedArray(srcData.length);
 
-	// Bilateral filter parameters
-	// Spatial standard deviation (how far to look for neighbors)
 	const spatialSigma = 2.0 * (1 + strength * 2);
-	// Range standard deviation (how different colors can be to still be averaged)
 	const rangeSigma = 25.0 * (1 + strength);
-
 	const windowRadius = Math.ceil(spatialSigma * 2);
 
-	// Precompute Gaussian spatial weights
 	const spatialWeights = new Float32Array((windowRadius * 2 + 1) ** 2);
 	let idx = 0;
 	for (let dy = -windowRadius; dy <= windowRadius; dy++) {
@@ -45,7 +25,6 @@ export const applyBilateralFilter = (
 		}
 	}
 
-	// Process each pixel
 	for (let y = 0; y < height; y++) {
 		for (let x = 0; x < width; x++) {
 			const centerIdx = (y * width + x) * 4;
@@ -54,10 +33,8 @@ export const applyBilateralFilter = (
 			const centerB = srcData[centerIdx + 2];
 			const centerA = srcData[centerIdx + 3];
 
-			// Copy alpha directly
 			outData[centerIdx + 3] = centerA;
 
-			// Skip transparent pixels
 			if (centerA < 10) {
 				outData[centerIdx] = centerR;
 				outData[centerIdx + 1] = centerG;
@@ -91,13 +68,11 @@ export const applyBilateralFilter = (
 					const nB = srcData[neighborIdx + 2];
 					const nA = srcData[neighborIdx + 3];
 
-					// Skip transparent neighbors
 					if (nA < 10) {
 						weightIdx++;
 						continue;
 					}
 
-					// Calculate color distance (range weight)
 					const dr = nR - centerR;
 					const dg = nG - centerG;
 					const db = nB - centerB;
@@ -106,7 +81,6 @@ export const applyBilateralFilter = (
 						-colorDist / (2 * rangeSigma * rangeSigma),
 					);
 
-					// Combined weight (spatial * range)
 					const weight = spatialWeights[weightIdx] * rangeWeight;
 
 					sumR += nR * weight;
@@ -118,13 +92,11 @@ export const applyBilateralFilter = (
 				}
 			}
 
-			// Normalize and write output
 			if (sumWeight > 0) {
 				outData[centerIdx] = Math.round(sumR / sumWeight);
 				outData[centerIdx + 1] = Math.round(sumG / sumWeight);
 				outData[centerIdx + 2] = Math.round(sumB / sumWeight);
 			} else {
-				// Fallback if no valid neighbors
 				outData[centerIdx] = centerR;
 				outData[centerIdx + 1] = centerG;
 				outData[centerIdx + 2] = centerB;
@@ -135,14 +107,7 @@ export const applyBilateralFilter = (
 	return new ImageData(outData, width, height);
 };
 
-/**
- * Applies unsharp masking for edge enhancement
- * This is a simpler, more predictable alternative to FFT sharpening
- *
- * @param imageData Source ImageData
- * @param amount Sharpening amount (0.0 to 2.0 recommended)
- * @returns New ImageData with sharpening applied
- */
+/** Unsharp mask for edge enhancement. */
 export const applyUnsharpMask = (
 	imageData: ImageData,
 	amount: number,
@@ -153,14 +118,11 @@ export const applyUnsharpMask = (
 	const height = imageData.height;
 	const srcData = imageData.data;
 
-	// First, create a blurred version using simple box blur
 	const blurred = applyBoxBlur(imageData, 1);
 	const blurredData = blurred.data;
 
-	// Create output
 	const outData = new Uint8ClampedArray(srcData.length);
 
-	// Unsharp mask formula: output = original + amount * (original - blurred)
 	for (let i = 0; i < srcData.length; i += 4) {
 		const alpha = srcData[i + 3];
 		outData[i + 3] = alpha;
@@ -183,9 +145,7 @@ export const applyUnsharpMask = (
 	return new ImageData(outData, width, height);
 };
 
-/**
- * Simple box blur helper for unsharp mask
- */
+/** Box blur helper. */
 function applyBoxBlur(imageData: ImageData, radius: number): ImageData {
 	const width = imageData.width;
 	const height = imageData.height;

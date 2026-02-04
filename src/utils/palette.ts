@@ -1,9 +1,6 @@
 export type RGB = { r: number; g: number; b: number };
 
-/**
- * Extracts a palette of unique colors from the given ImageData.
- * Ignores fully transparent pixels.
- */
+/** Extracts unique non-transparent colors. */
 export function extractPalette(imageData: ImageData): RGB[] {
 	const { data, width, height } = imageData;
 	const palette: RGB[] = [];
@@ -16,7 +13,7 @@ export function extractPalette(imageData: ImageData): RGB[] {
 		const b = data[idx + 2];
 		const a = data[idx + 3];
 
-		if (a === 0) continue; // Ignore transparency
+		if (a === 0) continue;
 
 		const key = `${r},${g},${b}`;
 		if (!seen.has(key)) {
@@ -28,9 +25,7 @@ export function extractPalette(imageData: ImageData): RGB[] {
 	return palette;
 }
 
-/**
- * Calculates the Euclidean distance squared between two colors.
- */
+/** Squared Euclidean distance. */
 function colorDistSq(c1: RGB, c2: RGB): number {
 	const dr = c1.r - c2.r;
 	const dg = c1.g - c2.g;
@@ -38,17 +33,7 @@ function colorDistSq(c1: RGB, c2: RGB): number {
 	return dr * dr + dg * dg + db * db;
 }
 
-/**
- * Optimizes a palette by merging colors that are indistinguishable
- * (closer than the given threshold distance).
- *
- * This implementation uses a simple greedy approach:
- * 1. Take the first color.
- * 2. Find all other colors close to it.
- * 3. Average them all into one color.
- * 4. Add to new palette and remove from processing.
- * 5. Repeat.
- */
+/** Merges indistinguishable colors. */
 export function optimizePalette(palette: RGB[], threshold: number): RGB[] {
 	const optimized: RGB[] = [];
 	const remaining = [...palette];
@@ -68,7 +53,6 @@ export function optimizePalette(palette: RGB[], threshold: number): RGB[] {
 			}
 		}
 
-		// Average the group
 		let accR = 0;
 		let accG = 0;
 		let accB = 0;
@@ -91,9 +75,7 @@ export function optimizePalette(palette: RGB[], threshold: number): RGB[] {
 	return optimized;
 }
 
-/**
- * Finds the closest color in the palette to the target color.
- */
+/** Finds the closest palette color. */
 export function findClosestColor(color: RGB, palette: RGB[]): RGB {
 	if (palette.length === 0) return color;
 
@@ -111,9 +93,7 @@ export function findClosestColor(color: RGB, palette: RGB[]): RGB {
 	return closest;
 }
 
-/**
- * Iteratively optimizes the palette until it has at most the target number of colors.
- */
+/** Reduces palette to at most the target count. */
 export function reducePaletteToCount(
 	palette: RGB[],
 	targetCount: number,
@@ -121,16 +101,13 @@ export function reducePaletteToCount(
 	if (palette.length <= targetCount) return palette;
 
 	let currentPalette = [...palette];
-	let threshold = 2; // Start with a small threshold
-
-	// Heuristic loop: increase threshold until we reach target count
-	// Safety break to prevent infinite loops (though reduce should eventually effectively merge everything)
+	let threshold = 2;
 	let lastLength = currentPalette.length;
 	let sameLengthCount = 0;
 
 	while (currentPalette.length > targetCount) {
 		currentPalette = optimizePalette(currentPalette, threshold);
-		threshold += 5; // Increase step
+		threshold += 5;
 
 		if (currentPalette.length === lastLength) {
 			sameLengthCount++;
@@ -139,18 +116,13 @@ export function reducePaletteToCount(
 		}
 		lastLength = currentPalette.length;
 
-		// If we're stuck, force a larger jump or break if we simply can't reduce further (unlikely with optimizePalette)
 		if (sameLengthCount > 5) {
 			threshold += 20;
 		}
-		if (threshold > 500) break; // Maximum reasonable color distance
+		if (threshold > 500) break;
 	}
 
-	// If we still have too many (e.g. very distinct colors), just slice the most distinct?
-	// But optimizePalette should tend to merge.
-	// As a final fallback if strictly needed:
 	if (currentPalette.length > targetCount) {
-		// Just take the first N (this is arbitrary but safe)
 		currentPalette = currentPalette.slice(0, targetCount);
 	}
 

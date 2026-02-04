@@ -8,10 +8,7 @@ import {
 	toPoint,
 } from "../utils/pixel-logic";
 
-/**
- * Advanced, grid-constrained scored-growth superpixel downscaling.
- * Uses strategies from pixel-path to preserve sharp edges and features.
- */
+/** Grid-constrained scored-growth superpixel downscaling. */
 export const SuperpixelScaler: ScalingAlgorithm = {
 	name: "Grid Superpixel Downscale (Smart)",
 	id: "grid-superpixel-smart",
@@ -41,10 +38,7 @@ export const SuperpixelScaler: ScalingAlgorithm = {
 	},
 };
 
-/**
- * Synchronous core of the superpixel scaler.
- * Returns raw ImageData for integration into other algorithms.
- */
+/** Core superpixel scaler logic. */
 export const processSuperpixelToImageData = (
 	image: HTMLImageElement,
 	targetW: number,
@@ -54,7 +48,6 @@ export const processSuperpixelToImageData = (
 	const srcW = image.naturalWidth;
 	const srcH = image.naturalHeight;
 
-	/* --- Source canvas --- */
 	const srcCanvas = document.createElement("canvas");
 	srcCanvas.width = srcW;
 	srcCanvas.height = srcH;
@@ -65,7 +58,6 @@ export const processSuperpixelToImageData = (
 	const srcImageData = srcCtx.getImageData(0, 0, srcW, srcH);
 	const srcData = srcImageData.data;
 
-	/* --- Bookkeeping & Output --- */
 	const visited = new Uint8Array(srcW * srcH);
 
 	const outCanvas = document.createElement("canvas");
@@ -76,7 +68,6 @@ export const processSuperpixelToImageData = (
 	const outImage = outCtx.createImageData(targetW, targetH);
 	const outData = outImage.data;
 
-	/* --- Process each target grid cell --- */
 	for (let ty = 0; ty < targetH; ty++) {
 		for (let tx = 0; tx < targetW; tx++) {
 			const cellMinX = Math.floor((tx * srcW) / targetW);
@@ -84,7 +75,6 @@ export const processSuperpixelToImageData = (
 			const cellMinY = Math.floor((ty * srcH) / targetH);
 			const cellMaxY = Math.floor(((ty + 1) * srcH) / targetH) - 1;
 
-			// 1. Find the best seed pixel in this cell (highest local contrast)
 			let seedIdx = -1;
 			let maxContrast = -1;
 
@@ -101,7 +91,6 @@ export const processSuperpixelToImageData = (
 				}
 			}
 
-			// Fallback if cell is fully transparent or low contrast
 			if (seedIdx === -1) {
 				seedIdx = toIndex(
 					srcW,
@@ -126,15 +115,11 @@ export const processSuperpixelToImageData = (
 			let accA = 0;
 			let count = 0;
 
-			// 2. Graded growth using a simple priority list (highest score first)
-			// Score = similarity * contrast_boost * center_gravity
 			const clusterQueue: { idx: number; score: number }[] = [
 				{ idx: seedIdx, score: 1000 },
 			];
 
-			// Simple iterative growth within the cell
 			while (clusterQueue.length > 0) {
-				// Pick best candidate
 				clusterQueue.sort((a, b) => b.score - a.score);
 				const current = clusterQueue.shift();
 				if (!current) break;
@@ -163,7 +148,6 @@ export const processSuperpixelToImageData = (
 					const diff = dr + dg + db;
 
 					if (diff <= threshold) {
-						// Calculate sophisticated score
 						const nLum = luminance01(
 							srcData[no],
 							srcData[no + 1],
@@ -183,7 +167,6 @@ export const processSuperpixelToImageData = (
 				}
 			}
 
-			/* --- Fallback: Capture remaining unvisited pixels in target cell --- */
 			for (let cy = cellMinY; cy <= cellMaxY; cy++) {
 				for (let cx = cellMinX; cx <= cellMaxX; cx++) {
 					const cIdx = toIndex(srcW, cx, cy);
@@ -199,7 +182,6 @@ export const processSuperpixelToImageData = (
 				}
 			}
 
-			// Write result to output image
 			const o = (ty * targetW + tx) * 4;
 			const div = count || 1;
 			outData[o] = (accR / div) | 0;
