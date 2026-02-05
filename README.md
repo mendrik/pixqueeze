@@ -50,7 +50,7 @@ Enhance your results further with integrated processing steps:
 
 <!-- Placeholder for Main UI Screenshot -->
 <div align="center">
-  <img width="2385" height="278" alt="image" src="https://github.com/user-attachments/assets/b3962347-0dc8-4c30-a463-e915b2867b89" />
+  <img width="2365" height="385" alt="image" src="https://github.com/user-attachments/assets/3ede9a0f-6020-4e8f-83c1-a02a7bb69677" />
 </div>
 
 <br>
