@@ -1,27 +1,34 @@
-export type RGB = { r: number; g: number; b: number };
+export type RGB = { r: number; g: number; b: number; count?: number };
 
 /** Extracts unique non-transparent colors. */
-export function extractPalette(imageData: ImageData): RGB[] {
+export function extractPalette(imageData: {
+	data: Uint8ClampedArray;
+	width: number;
+	height: number;
+}): RGB[] {
 	const { data, width, height } = imageData;
-	const palette: RGB[] = [];
-	const seen = new Set<number>();
+	const counts = new Map<number, number>();
 	const data32 = new Uint32Array(data.buffer);
+	const len = width * height;
 
-	for (let i = 0; i < width * height; i++) {
+	for (let i = 0; i < len; i++) {
 		const val = data32[i];
 		const a = (val >> 24) & 0xff;
 
 		if (a === 0) continue;
 
 		const rgb = val & 0xffffff;
-		if (!seen.has(rgb)) {
-			seen.add(rgb);
-			palette.push({
-				r: val & 0xff,
-				g: (val >> 8) & 0xff,
-				b: (val >> 16) & 0xff,
-			});
-		}
+		counts.set(rgb, (counts.get(rgb) || 0) + 1);
+	}
+
+	const palette: RGB[] = [];
+	for (const [rgb, count] of counts.entries()) {
+		palette.push({
+			r: rgb & 0xff,
+			g: (rgb >> 8) & 0xff,
+			b: (rgb >> 16) & 0xff,
+			count,
+		});
 	}
 
 	return palette;

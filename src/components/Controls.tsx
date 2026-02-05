@@ -119,7 +119,7 @@ export const Controls = ({
 				<input
 					type="range"
 					min="1"
-					max="16"
+					max="20"
 					step="1"
 					value={maxColorsPerShade}
 					onChange={(e) =>

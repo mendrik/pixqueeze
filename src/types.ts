@@ -14,6 +14,7 @@ export interface PaletteColor {
 	r: number;
 	g: number;
 	b: number;
+	count?: number;
 }
 
 export interface RawImageData {
@@ -67,7 +68,6 @@ export interface ScalerWorkerApi {
 		targetW: number,
 		targetH: number,
 		threshold: number,
-		palette: PaletteColor[],
 		bilateralStrength: number,
 		waveletStrength: number,
 		deblurMethod: "none" | "bilateral" | "wavelet",

@@ -1,5 +1,6 @@
 import * as Comlink from "comlink";
 import type { PaletteColor, RawImageData, ScalerWorkerApi } from "../types";
+import { extractPalette } from "../utils/palette";
 
 // --- Utilities adapted for Worker ---
 
@@ -499,51 +500,69 @@ const processContourBase = (
 	return { data: outData, width: targetW, height: targetH };
 };
 
-const optimizePalette = (
+const rgbToHsl = (r: number, g: number, b: number) => {
+	const valR = r / 255;
+	const valG = g / 255;
+	const valB = b / 255;
+
+	const max = Math.max(valR, valG, valB);
+	const min = Math.min(valR, valG, valB);
+	let h = 0;
+	const l = (max + min) / 2;
+
+	if (max === min) {
+		h = 0; // achromatic
+	} else {
+		const d = max - min;
+		switch (max) {
+			case valR:
+				h = (valG - valB) / d + (valG < valB ? 6 : 0);
+				break;
+			case valG:
+				h = (valB - valR) / d + 2;
+				break;
+			case valB:
+				h = (valR - valG) / d + 4;
+				break;
+		}
+		h /= 6;
+	}
+
+	return { h, l };
+};
+
+const optimizePaletteBanded = (
 	palette: PaletteColor[],
-	threshold: number,
-	maxColors: number
+	maxColors: number,
 ): PaletteColor[] => {
+	// 1. Partition into bands
+	// Hue bands: 12 slices (30 degrees each)
+	// Lightness bands: 4 slices (0-0.25, 0.25-0.5, etc)
+	const bands: Record<string, PaletteColor[]> = {};
+
+	for (const color of palette) {
+		const { h, l } = rgbToHsl(color.r, color.g, color.b);
+		const hueBand = Math.floor(h * 12); // 0-11
+		const lightBand = Math.floor(l * 4); // 0-3
+		const key = `${hueBand}-${lightBand}`;
+
+		if (!bands[key]) bands[key] = [];
+		bands[key].push(color);
+	}
+
 	const optimized: PaletteColor[] = [];
-	const remaining = [...palette];
-	const thresholdSq = threshold * threshold;
 
-	while (remaining.length > 0) {
-		const base = remaining.shift();
-		if (!base) break;
-		const group: PaletteColor[] = [base];
-		const nextRemaining: PaletteColor[] = [];
+	// 2. Reduce each band
+	for (const key in bands) {
+		const group = bands[key];
+		// Sort by frequency
+		group.sort((a, b) => (b.count || 0) - (a.count || 0));
 
-		for (const color of remaining) {
-			const dr = base.r - color.r;
-			const dg = base.g - color.g;
-			const db = base.b - color.b;
-			if (dr * dr + dg * dg + db * db <= thresholdSq) {
-				group.push(color);
-			} else {
-				nextRemaining.push(color);
-			}
+		// Keep top maxColors
+		// If group has fewer, keep all
+		for (let i = 0; i < Math.min(group.length, maxColors); i++) {
+			optimized.push(group[i]);
 		}
-
-		if (group.length <= maxColors) {
-			optimized.push(...group);
-		} else {
-			// Sort by luminance to pick diverse representatives
-			group.sort((a, b) => {
-				const lumA = 0.2126 * a.r + 0.7152 * a.g + 0.0722 * a.b;
-				const lumB = 0.2126 * b.r + 0.7152 * b.g + 0.0722 * b.b;
-				return lumA - lumB;
-			});
-
-			const step = (group.length - 1) / (maxColors - 1);
-			for (let i = 0; i < maxColors; i++) {
-				const index = Math.round(i * step);
-				optimized.push(group[index]);
-			}
-		}
-
-		remaining.length = 0;
-		remaining.push(...nextRemaining);
 	}
 
 	return optimized;
@@ -554,7 +573,6 @@ const processSharpener = (
 	targetW: number,
 	targetH: number,
 	threshold: number,
-	palette: PaletteColor[],
 	bilateralStrength: number,
 	waveletStrength: number,
 	deblurMethod: "none" | "bilateral" | "wavelet",
@@ -575,9 +593,17 @@ const processSharpener = (
 	}
 
 	// 3. Optimize Palette
-	// Merge almost identical colors to increase crispness.
-	// Threshold 30 (~900 squared)
-	const optimizedPalette = optimizePalette(palette, 30, maxColorsPerShade);
+	// Extract palette from the PROCESSED image
+	const extractedPalette = extractPalette({
+		data: processed.data,
+		width: targetW,
+		height: targetH,
+	});
+
+	const optimizedPalette = optimizePaletteBanded(
+		extractedPalette,
+		maxColorsPerShade,
+	);
 
 	// Pre-extract optimized palette
 	const palette32 = new Uint32Array(optimizedPalette.length);
@@ -750,7 +776,6 @@ const api: ScalerWorkerApi = {
 		targetW,
 		targetH,
 		threshold,
-		palette,
 		bilateralStrength,
 		waveletStrength,
 		deblurMethod,
@@ -761,7 +786,6 @@ const api: ScalerWorkerApi = {
 			targetW,
 			targetH,
 			threshold,
-			palette,
 			bilateralStrength,
 			waveletStrength,
 			deblurMethod,

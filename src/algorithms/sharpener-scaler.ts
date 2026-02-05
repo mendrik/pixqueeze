@@ -1,6 +1,5 @@
 import * as Comlink from "comlink";
 import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
-import { extractPalette } from "../utils/palette";
 
 /**
  * Sharpener Scaler
@@ -44,11 +43,6 @@ export const SharpenerScaler: ScalingAlgorithm = {
 		const srcImageData = srcCtx.getImageData(0, 0, srcW, srcH);
 		const srcData = srcImageData.data;
 
-		// Extract palette on main thread (cheap enough usually, or move to worker?)
-		// Currently `extractPalette` is synchronous and might block if image is huge.
-		// For now keeping it here as it was before.
-		const palette = extractPalette(srcImageData);
-
 		const workerInstance = new (
 			await import("../workers/scaler.worker?worker")
 		).default();
@@ -67,7 +61,6 @@ export const SharpenerScaler: ScalingAlgorithm = {
 				targetW,
 				targetH,
 				threshold,
-				palette,
 				bilateralStrength,
 				waveletStrength,
 				deblurMethod as "none" | "bilateral" | "wavelet",
