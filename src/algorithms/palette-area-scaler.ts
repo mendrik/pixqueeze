@@ -63,6 +63,7 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 			const arrayBuffer = new ArrayBuffer(outImage.data.byteLength);
 			new Uint8Array(arrayBuffer).set(new Uint8Array(outImage.data.buffer));
 			const safeData = new Uint8ClampedArray(arrayBuffer);
+
 			const outImageData = new ImageData(
 				safeData,
 				outImage.width,

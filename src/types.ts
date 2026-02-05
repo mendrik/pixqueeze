@@ -1,3 +1,11 @@
+// Domain Types
+export type DeblurMethod = "none" | "bilateral" | "wavelet";
+
+export interface ScalingOptions {
+	onProgress?: (percent: number) => void;
+	[key: string]: unknown;
+}
+
 export interface ScalingAlgorithm {
 	name: string;
 	id: string;
@@ -5,22 +13,21 @@ export interface ScalingAlgorithm {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		// biome-ignore lint/suspicious/noExplicitAny: Algorithm options vary dynamically
-		options?: { onProgress?: (percent: number) => void; [key: string]: any },
+		options?: ScalingOptions,
 	) => Promise<string>;
 }
 
 export interface PaletteColor {
-	r: number;
-	g: number;
-	b: number;
-	count?: number;
+	readonly r: number;
+	readonly g: number;
+	readonly b: number;
+	readonly count?: number;
 }
 
 export interface RawImageData {
-	data: Uint8ClampedArray;
-	width: number;
-	height: number;
+	readonly data: Uint8ClampedArray;
+	readonly width: number;
+	readonly height: number;
 }
 
 export interface DeblurWorkerApi {
@@ -70,7 +77,7 @@ export interface ScalerWorkerApi {
 		threshold: number,
 		bilateralStrength: number,
 		waveletStrength: number,
-		deblurMethod: "none" | "bilateral" | "wavelet",
+		deblurMethod: DeblurMethod,
 		maxColorsPerShade: number,
 	): Promise<RawImageData>;
 

@@ -10,8 +10,6 @@ const softLimit = (x: number, limit: number): number => {
 	return x / (1 + absX / limit);
 };
 
-
-
 const applyWaveletSharpen = (
 	input: RawImageData,
 	strength: number,
@@ -728,21 +726,24 @@ const processPaletteArea = (
 	return { data: outData, width: targetW, height: targetH };
 };
 
+// --- Worker Communication Wrapper ---
+
+// Shared helper to type the transfer return correctly
+const transferRaw = (raw: RawImageData) =>
+	Comlink.transfer(raw, [raw.data.buffer]) as unknown as RawImageData;
+
 const api: ScalerWorkerApi = {
 	processNearest: async (input, targetW, targetH) => {
 		const result = processNearest(input, targetW, targetH);
-		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
-		return Comlink.transfer(result, [result.data.buffer]) as any;
+		return transferRaw(result);
 	},
 	processBicubic: async (input, targetW, targetH) => {
 		const result = processBicubic(input, targetW, targetH);
-		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
-		return Comlink.transfer(result, [result.data.buffer]) as any;
+		return transferRaw(result);
 	},
 	processEdgePriority: async (input, targetW, targetH, threshold) => {
 		const result = processEdgePriorityBase(input, targetW, targetH, threshold);
-		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
-		return Comlink.transfer(result, [result.data.buffer]) as any;
+		return transferRaw(result);
 	},
 	processSharpener: async (
 		input,
@@ -764,13 +765,11 @@ const api: ScalerWorkerApi = {
 			deblurMethod,
 			maxColorsPerShade,
 		);
-		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
-		return Comlink.transfer(result, [result.data.buffer]) as any;
+		return transferRaw(result);
 	},
 	processPaletteArea: async (input, targetW, targetH, palette) => {
 		const result = processPaletteArea(input, targetW, targetH, palette);
-		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
-		return Comlink.transfer(result, [result.data.buffer]) as any;
+		return transferRaw(result);
 	},
 };
 

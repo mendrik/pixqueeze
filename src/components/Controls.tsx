@@ -9,6 +9,7 @@ import {
 	targetEdgeStore,
 	waveletStrengthStore,
 } from "../store";
+import type { DeblurMethod } from "../types";
 import { HeaderPreview } from "./HeaderPreview";
 
 export const Controls = ({
@@ -58,9 +59,7 @@ export const Controls = ({
 					className="dropdown-input"
 					value={deblurMethod}
 					onChange={(e) =>
-						deblurMethodStore.set(
-							e.target.value as "none" | "bilateral" | "wavelet",
-						)
+						deblurMethodStore.set(e.target.value as DeblurMethod)
 					}
 				>
 					<option value="none">None</option>

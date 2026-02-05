@@ -1,5 +1,10 @@
 import * as Comlink from "comlink";
-import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
+import type {
+	DeblurMethod,
+	ScalerWorkerApi,
+	ScalingAlgorithm,
+	ScalingOptions,
+} from "../types";
 
 /**
  * Sharpener Scaler
@@ -15,21 +20,13 @@ export const SharpenerScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		options?: unknown,
+		options?: ScalingOptions,
 	): Promise<string> => {
-		const opt = options as {
-			superpixelThreshold?: number;
-			bilateralStrength?: number;
-			waveletStrength?: number;
-			deblurMethod?: "none" | "bilateral" | "wavelet";
-			onProgress?: (percent: number) => void;
-			maxColorsPerShade?: number;
-		};
-		const threshold = opt?.superpixelThreshold ?? 35;
-		const deblurMethod = opt?.deblurMethod ?? "none";
-		const bilateralStrength = opt?.bilateralStrength ?? 0;
-		const waveletStrength = opt?.waveletStrength ?? 0.5;
-		const maxColorsPerShade = opt?.maxColorsPerShade ?? 4;
+		const threshold = (options?.superpixelThreshold as number) ?? 35;
+		const deblurMethod = (options?.deblurMethod as DeblurMethod) ?? "none";
+		const bilateralStrength = (options?.bilateralStrength as number) ?? 0;
+		const waveletStrength = (options?.waveletStrength as number) ?? 0.5;
+		const maxColorsPerShade = (options?.maxColorsPerShade as number) ?? 4;
 
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;
@@ -63,7 +60,7 @@ export const SharpenerScaler: ScalingAlgorithm = {
 				threshold,
 				bilateralStrength,
 				waveletStrength,
-				deblurMethod as "none" | "bilateral" | "wavelet",
+				deblurMethod,
 				maxColorsPerShade,
 			);
 
@@ -73,8 +70,13 @@ export const SharpenerScaler: ScalingAlgorithm = {
 			const ctx = canvas.getContext("2d");
 			if (!ctx) throw new Error("Output canvas context unavailable");
 
-			// @ts-expect-error: TS definition mismatch for ImageData
-			const imgData = new ImageData(rawData.data, targetW, targetH);
+			// rawData.data is already Uint8ClampedArray from the worker transfer
+			// Rebuild a fresh ArrayBuffer no matter what the worker returned
+			const arrayBuffer = new ArrayBuffer(rawData.data.byteLength);
+			new Uint8Array(arrayBuffer).set(new Uint8Array(rawData.data.buffer));
+			const safeData = new Uint8ClampedArray(arrayBuffer);
+
+			const imgData = new ImageData(safeData, targetW, targetH);
 			ctx.putImageData(imgData, 0, 0);
 			return canvas.toDataURL();
 		} finally {

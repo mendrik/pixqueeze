@@ -51,8 +51,12 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 			const ctx = canvas.getContext("2d");
 			if (!ctx) throw new Error("Output canvas context unavailable");
 
-			// @ts-expect-error: TS definition mismatch for ImageData
-			const imgData = new ImageData(rawData.data, targetW, targetH);
+			// Rebuild a fresh ArrayBuffer no matter what the worker returned
+			const arrayBuffer = new ArrayBuffer(rawData.data.byteLength);
+			new Uint8Array(arrayBuffer).set(new Uint8Array(rawData.data.buffer));
+			const safeData = new Uint8ClampedArray(arrayBuffer);
+
+			const imgData = new ImageData(safeData, targetW, targetH);
 			ctx.putImageData(imgData, 0, 0);
 			return canvas.toDataURL();
 		} finally {
