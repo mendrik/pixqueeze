@@ -11,7 +11,7 @@ import { extractPalette } from "../utils/palette";
  * 3. Re-quantize using majority or weighted vote
  */
 export const PaletteAreaScaler: ScalingAlgorithm = {
-	name: "Palette-Aware Area sampling",
+	name: "Palette-Aware",
 	id: "palette-area",
 	process: async (
 		image: HTMLImageElement,
@@ -46,7 +46,7 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 		const scalerWorkerApi = Comlink.wrap<ScalerWorkerApi>(scalerWorkerInstance);
 
 		try {
-			const outRaw = await scalerWorkerApi.processPaletteArea(
+			const outImage = await scalerWorkerApi.processPaletteArea(
 				Comlink.transfer(
 					{
 						data: srcData,
@@ -60,11 +60,13 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 				palette,
 			);
 
-			// @ts-expect-error: TS definition mismatch
+			const arrayBuffer = new ArrayBuffer(outImage.data.byteLength);
+			new Uint8Array(arrayBuffer).set(new Uint8Array(outImage.data.buffer));
+			const safeData = new Uint8ClampedArray(arrayBuffer);
 			const outImageData = new ImageData(
-				outRaw.data,
-				outRaw.width,
-				outRaw.height,
+				safeData,
+				outImage.width,
+				outImage.height,
 			);
 			outCtx.putImageData(outImageData, 0, 0);
 			return outCanvas.toDataURL();
