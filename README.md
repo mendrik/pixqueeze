@@ -1,6 +1,6 @@
 # Pixqueeze - Superpixel Scaling
 
-**Pixqueeze** is a premium web-based image scaling application designed for high-quality upscaling of low-resolution images and pixel art. By utilizing advanced superpixel algorithms and intelligent post-processing, Pixqueeze preserves sharp edges and distinct features that traditional scaling methods often blur.
+**Pixqueeze** is a web-based image scaling application designed for high-quality downscaling of low-resolution images and pixel art.
 
 ---
 
