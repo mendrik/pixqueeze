@@ -1,77 +1,78 @@
 # Pixqueeze - Superpixel Scaling
 
-**Pixqueeze** is a web-based image scaling application designed for high-quality downscaling of low-resolution images and pixel art.
+Pixqueeze is a web-based image scaling application designed for high-quality downscaling of low-resolution images and pixel art. It uses advanced algorithms to preserve features and clarity that standard resizing methods often lose.
 
 ---
 
-## ✨ Features
+## Features
 
-### 🚀 Advanced Scaling Algorithms
-Pixqueeze offers a variety of scaling methods to suit different needs:
-- **Nearest Neighbor**: Baseline fast scaling, preserving the blocky look of pixels.
-- **Bicubic Interpolation**: Standard smooth scaling for natural images.
-- **Superpixel Scaling (Draft)**: A feature-aware scaling method that avoids typical interpolation blur.
-- **Superpixel Scaling (Production)**: Our flagship algorithm, further refined for superior edge clarity and feature preservation.
-- **Megapixel Scaling**: Experimental high-fidelity scaling that incorporates color palette optimization for incredibly clean results.
+### Advanced Scaling Algorithms
+Pixqueeze offers a variety of scaling methods, from standard techniques to our custom-built algorithms:
 
-### 🛠️ Intelligent Post-Processing
+- **Nearest Neighbor**: The classic approach. Fast and preserves the raw, blocky look of pixels without any blurring.
+- **Bicubic Interpolation**: Standard smooth scaling, useful for natural photographic images where soft transitions are desired.
+- **Palette-Aware Area**: A smart scaling method that first analyzes the image's palette. It "votes" on the final color of a pixel based on the most prominent palette colors in the source area. This is excellent for maintaining distinct colors in pixel art without the muddiness of standard interpolation.
+- **Edge-Priority Scaler** (formerly Contour): A content-aware scaling method. Instead of blindly averaging pixels, it scans the source area for high-contrast "seeds"—pixels that define edges or details. It then grows a region around these seeds to determine the final pixel color. This ensures that fine lines and significant details are preserved and not washed out by the background.
+- **Sharpener**: Our flagship high-fidelity pipeline. It combines the Edge-Priority logic with a multi-stage post-processing pass:
+    1.  **Smart Scaling**: Uses edge-priority logic to maintain structure.
+    2.  **Bilateral Filtering**: Smooths out noise while strictly preserving edge sharpness.
+    3.  **Palette Optimization**: Dynamically reduces the color count by merging similar shades.
+    4.  **Snap**: Forces pixels to align with the optimized palette, producing a clean, posterized look perfect for cleaning up noisy scans or sketches.
+
+### Intelligent Post-Processing
 Enhance your results further with integrated processing steps:
-- **Bilateral Filter**: Reduces noise and artifacts while maintaining sharp object boundaries.
+- **Bilateral Filter**: An edge-preserving smoothing filter that reduces noise without blurring important boundary details.
 - **Wavelet Sharpening**: Intelligent sharpening that boosts high-frequency details without overshooting.
-- **Palette Snapping**: Automatically optimizes the image's colors by snapping them to a refined palette, perfect for cleaning up scanned or noisy pixel art.
+- **Palette Optimization**: Automatically optimizes the image's colors by merging similar shades, helping to clean up noisy inputs.
 
-### ⚡ Performance & UX
-- **Web Worker Architecture**: Heavy computations are offloaded to background threads using Comlink, ensuring a lag-free UI.
-- **Real-time 12.5x - 4x Processing**: Optimized for fast iteration and instant feedback.
-- **Multi-Zoom Comparisons**: View results at 1x, 2x, and 3x zoom levels side-by-side in a centralized grid.
-- **Automatic Pre-scaling**: Large inputs are intelligently scaled to an optimal 256px processing size.
+### Performance & User Experience
+- **Web Worker Architecture**: All heavy image processing and scaling computations are offloaded to background threads. This ensures the User Interface remains responsive and lag-free, even during intensive operations.
+- **Real-time Processing**: Optimized for fast iteration, providing near-instant feedback as you adjust parameters.
+- **Multi-Zoom Comparisons**: View processed results at 1x, 2x, and 3x zoom levels side-by-side in a centralized grid for easy evaluation.
+- **Adaptive Processing**: The application intelligently scales large inputs to optimal processing sizes.
 
 ---
 
-## 📸 Screen Shots & Samples
+## Screen Shots & Samples
 
-<p>Downscaled to 32 or 64 pixels respectively</p>
+Downscaled to 32 or 64 pixels respectively.
 
-Samples are nearest neighbour, palette area, bicubic, superpixel variant, superpixel with wavelet sharpening and palette reduction.
+Samples include nearest neighbor, palette area, bicubic, and our custom scalers with various optimizations.
 
 <div align="center">
-  <img width="2368" height="330" alt="image" src="https://github.com/user-attachments/assets/6f8833cd-d56c-4dd0-a250-36f51ae20970" />
+  <img width="2368" alt="Sample 1" src="https://github.com/user-attachments/assets/6f8833cd-d56c-4dd0-a250-36f51ae20970" />
 </div>
 
-<!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img width="2360" height="312" alt="image" src="https://github.com/user-attachments/assets/911e310f-75b8-4151-8502-ad2ab77c7fda" />
+  <img width="2360" alt="Sample 2" src="https://github.com/user-attachments/assets/911e310f-75b8-4151-8502-ad2ab77c7fda" />
 </div>
 
-<!-- Placeholder for Main UI Screenshot -->
 <div align="center">
-  <img width="2365" height="385" alt="image" src="https://github.com/user-attachments/assets/3ede9a0f-6020-4e8f-83c1-a02a7bb69677" />
+  <img width="2365" alt="UI Screenshot" src="https://github.com/user-attachments/assets/3ede9a0f-6020-4e8f-83c1-a02a7bb69677" />
 </div>
-
-<br>
 
 <br>
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 Pixqueeze is built with a modern, performance-first tech stack:
 
-- **Core**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **State Management**: [Nanostores](https://github.com/nanostores/nanostores) (Atomic, lightweight state)
-- **Concurrency**: [Comlink](https://github.com/GoogleChromeLabs/comlink) (Web Workers)
+- **Core**: React 19 + TypeScript
+- **Build Tool**: Vite
+- **State Management**: Nanostores (Atomic, lightweight state)
+- **Concurrency**: Comlink (Web Workers)
 - **Styling**: Vanilla CSS
-- **Tooling**: [Biome](https://biomejs.dev/) (Linting & Formatting), [Vitest](https://vitest.dev/) (Testing)
+- **Tooling**: Biome (Linting & Formatting), Vitest (Testing)
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/)
-- [pnpm](https://pnpm.io/)
+- Node.js
+- pnpm
 
 ### Installation
 ```bash
@@ -99,12 +100,12 @@ pnpm run build
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
 <div align="center">
-  Made with 🧡 by Mendrik
+  Made by Mendrik
 </div>

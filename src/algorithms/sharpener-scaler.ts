@@ -3,7 +3,7 @@ import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
 
 /**
  * Sharpener Scaler
- * Extends Grid Contour Smart scaler by snapping final colors to a
+ * Extends Edge Priority Scaler by snapping final colors to a
  * palette extracted and optimized from the source image.
  * Applies optional sharpening and De-AA.
  */

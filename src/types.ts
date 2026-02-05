@@ -48,7 +48,7 @@ export interface ScalerWorkerApi {
 		targetH: number,
 	): Promise<RawImageData>;
 
-	processContour(
+	processEdgePriority(
 		input: {
 			data: Uint8ClampedArray;
 			width: number;

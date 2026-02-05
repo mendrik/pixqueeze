@@ -1,10 +1,10 @@
 import * as Comlink from "comlink";
 import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
 
-/** Grid-constrained scored-growth superpixel downscaling. */
-export const ContourScaler: ScalingAlgorithm = {
-	name: "Contour Scaler",
-	id: "contour-scaler",
+/** Grid-constrained scored-growth edge-priority superpixel downscaling. */
+export const EdgePriorityScaler: ScalingAlgorithm = {
+	name: "Edge Priority Scaler",
+	id: "edge-priority-scaler",
 	process: async (
 		image: HTMLImageElement,
 		targetW: number,
@@ -31,7 +31,7 @@ export const ContourScaler: ScalingAlgorithm = {
 		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
 
 		try {
-			const rawData = await api.processContour(
+			const rawData = await api.processEdgePriority(
 				Comlink.transfer(
 					{
 						data: srcData,

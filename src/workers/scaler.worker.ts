@@ -10,34 +10,7 @@ const softLimit = (x: number, limit: number): number => {
 	return x / (1 + absX / limit);
 };
 
-// Fast separable 3x3 blur for float data
-const _fastBlur = (
-	src: Float32Array,
-	dst: Float32Array,
-	w: number,
-	h: number,
-) => {
-	// H-pass
-	for (let y = 0; y < h; y++) {
-		const yOff = y * w;
-		for (let x = 0; x < w; x++) {
-			const idx = (yOff + x) << 2;
-			const xm1 = x > 0 ? x - 1 : 0;
-			const xp1 = x < w - 1 ? x + 1 : w - 1;
-			const idxL = (yOff + xm1) << 2;
-			const idxR = (yOff + xp1) << 2;
 
-			dst[idx] = (src[idxL] + 2 * src[idx] + src[idxR]) * 0.25;
-			dst[idx + 1] = (src[idxL + 1] + 2 * src[idx + 1] + src[idxR + 1]) * 0.25;
-			dst[idx + 2] = (src[idxL + 2] + 2 * src[idx + 2] + src[idxR + 2]) * 0.25;
-			dst[idx + 3] = (src[idxL + 3] + 2 * src[idx + 3] + src[idxR + 3]) * 0.25;
-		}
-	}
-	// Copy to temp to do V-pass or just do it in place if careful?
-	// To strictly match separable blur, we need a temp buffer or 2 passes.
-	// Re-using implementation from wavelet-sharpen.ts which used a temp buffer.
-	// Since we are inside the worker and want performance, let's use a temp buffer inside applyWavelet.
-};
 
 const applyWaveletSharpen = (
 	input: RawImageData,
@@ -278,7 +251,7 @@ const processBicubic = (
 	};
 };
 
-const processContourBase = (
+const processEdgePriorityBase = (
 	input: { data: Uint8ClampedArray; width: number; height: number },
 	targetW: number,
 	targetH: number,
@@ -579,7 +552,7 @@ const processSharpener = (
 	maxColorsPerShade: number,
 ): RawImageData => {
 	// 1. Scale using Contour logic
-	const scaled = processContourBase(input, targetW, targetH, threshold);
+	const scaled = processEdgePriorityBase(input, targetW, targetH, threshold);
 
 	const len = targetW * targetH;
 
@@ -766,8 +739,8 @@ const api: ScalerWorkerApi = {
 		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
 		return Comlink.transfer(result, [result.data.buffer]) as any;
 	},
-	processContour: async (input, targetW, targetH, threshold) => {
-		const result = processContourBase(input, targetW, targetH, threshold);
+	processEdgePriority: async (input, targetW, targetH, threshold) => {
+		const result = processEdgePriorityBase(input, targetW, targetH, threshold);
 		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
 		return Comlink.transfer(result, [result.data.buffer]) as any;
 	},
