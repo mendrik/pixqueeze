@@ -171,7 +171,7 @@ export const App = () => {
 	return (
 		<div className="main-container">
 			<div className="content-wrapper">
-				<header className="app-header">
+				<div className="sidebar">
 					<div className="logo-section">
 						<div className="logo-icon-wrapper">
 							<img src={logo} alt="Logo" />
@@ -183,9 +183,11 @@ export const App = () => {
 					</div>
 
 					<Controls onUpload={handleUpload} />
-				</header>
+				</div>
 
-				<ResultsView hasImage={!!image} />
+				<div className="main-content">
+					<ResultsView hasImage={!!image} />
+				</div>
 			</div>
 		</div>
 	);

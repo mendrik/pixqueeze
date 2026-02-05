@@ -57,14 +57,21 @@ export const ZoomDialog = ({
 				<ChevronLeft size={32} />
 			</button>
 
-			<div
-				className="zoom-dialog-content"
-				onClick={(e) => e.stopPropagation()}
-				onKeyDown={(e) => e.stopPropagation()}
-				role="presentation"
-			>
-				<h2 className="dialog-title">{title}</h2>
-				<div className="zoom-wrapper">
+			<div className="zoom-dialog-content" role="presentation">
+				<h2
+					className="dialog-title"
+					onClick={(e) => e.stopPropagation()}
+					onKeyDown={(e) => e.stopPropagation()}
+					role="presentation"
+				>
+					{title}
+				</h2>
+				<div
+					className="zoom-wrapper"
+					onClick={(e) => e.stopPropagation()}
+					onKeyDown={(e) => e.stopPropagation()}
+					role="presentation"
+				>
 					<img src={imageSrc} alt={title} className="pixelated-zoom" />
 				</div>
 			</div>

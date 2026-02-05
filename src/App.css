@@ -48,71 +48,47 @@ body {
 }
 
 .content-wrapper {
-	max-width: 72rem;
+	max-width: 100%;
 	margin: 0 auto;
-}
-
-.app-header {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-	align-items: center;
 	gap: 2rem;
-	margin-bottom: 3rem;
 }
 
-@media (min-width: 768px) {
-	.app-header {
+@media (min-width: 1024px) {
+	.content-wrapper {
 		flex-direction: row;
+		align-items: flex-start;
 	}
 }
 
-.logo-section {
-	display: flex;
-	align-items: center;
-	gap: 1.25rem;
-}
-
-.logo-icon-wrapper {
-	width: 3rem;
-	height: 3rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.logo-icon {
-	color: var(--accent-color);
-}
-
-.logo-text {
+.sidebar {
 	display: flex;
 	flex-direction: column;
+	gap: 2rem;
+	width: 100%;
 }
 
-.app-title {
-	font-size: 1.875rem;
-	font-weight: 900;
-	letter-spacing: -0.05em;
-	font-style: italic;
-	margin: 0;
+@media (min-width: 1024px) {
+	.sidebar {
+		width: 17rem; /* Fixed width for controls including padding */
+		position: sticky;
+		top: 2rem;
+		flex-shrink: 0;
+	}
 }
 
-.app-subtitle {
-	color: var(--text-secondary);
-	font-size: 9px;
-	text-transform: uppercase;
-	font-weight: 900;
-	letter-spacing: 0.3em;
-	margin: 0;
+.main-content {
+	flex: 1;
+	width: 100%;
 }
 
+/* Updated Controls Section to fit in sidebar */
 .controls-section {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: 2rem;
+	flex-direction: column; /* Stack vertically in sidebar */
+	align-items: stretch;
+	gap: 1.5rem;
 	background-color: rgba(24, 24, 27, 0.4);
 	padding: 1.25rem;
 	border-radius: 1.5rem;
@@ -124,7 +100,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-	width: 11rem;
+	width: 100%; /* Full width in sidebar */
 }
 
 .control-header {
