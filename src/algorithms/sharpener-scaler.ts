@@ -46,6 +46,9 @@ export const SharpenerScaler: ScalingAlgorithm = {
 		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
 
 		try {
+			// Strip non-transferable options
+			const { onProgress, ...workerOptions } = options || {};
+
 			const rawData = await api.processSharpener(
 				Comlink.transfer(
 					{
@@ -62,6 +65,7 @@ export const SharpenerScaler: ScalingAlgorithm = {
 				waveletStrength,
 				deblurMethod,
 				maxColorsPerShade,
+				workerOptions,
 			);
 
 			const canvas = document.createElement("canvas");

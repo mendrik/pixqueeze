@@ -602,13 +602,11 @@ const processSharpener = (
 	return processed;
 };
 
-const processContourDebug = (
-	input: { data: Uint8ClampedArray; width: number; height: number },
-	_targetW: number,
-	_targetH: number,
-): RawImageData => {
-	// User's Algorithm: High Pass Filter -> Auto-Tuned Threshold -> Despeckle
-
+const detectContours = (input: {
+	data: Uint8ClampedArray;
+	width: number;
+	height: number;
+}): Uint8Array => {
 	const w = input.width;
 	const h = input.height;
 	const srcData32 = new Uint32Array(input.data.buffer);
@@ -624,25 +622,9 @@ const processContourDebug = (
 	}
 
 	// 2. High Pass Filter (Laplacian)
-	// A simple 3x3 Laplacian kernel detects rapid intensity changes.
-	// Kernel:
-	// -1 -1 -1
-	// -1  8 -1
-	// -1 -1 -1
-	// For a dark line on light background (low lum on high lum):
-	// Center (Low) * 8 - Neighbors (High) -> Highly NEGATIVE value.
-	// For a light line on dark background:
-	// Center (High) * 8 - Neighbors (Low) -> Highly POSITIVE value.
-	// The user mentioned "threshold auto tune for LOW LUMINANCE", suggesting we target dark lines.
-	// So we are interested in the NEGATIVE response (or just low raw luminance values combined with edge strength).
-	// Let's compute the raw Laplacian response.
-
 	const hpf = new Float32Array(w * h);
 	let minResp = 0;
 	let maxResp = 0;
-
-	// We can also compute a simple "difference from local mean" as a high pass.
-	// But Laplacian is standard.
 
 	for (let y = 1; y < h - 1; y++) {
 		for (let x = 1; x < w - 1; x++) {
@@ -668,13 +650,7 @@ const processContourDebug = (
 		}
 	}
 
-	// 3. Auto-Tune Threshold
-	// "Threshold auto tune for low luminance"
-	// Hypopthesis: We want pixels that represent dark edges.
-	// Dark edges have highly NEGATIVE Laplacian response (if center is dark vs surroundings).
-	// Let's analyze the distribution of NEGATIVE values.
-
-	// Calculate stats for negative responses (potential dark lines)
+	// 3. Auto-Tuned Threshold
 	let negSum = 0;
 	let negCount = 0;
 	for (let i = 0; i < w * h; i++) {
@@ -686,7 +662,6 @@ const processContourDebug = (
 
 	const negMean = negCount > 0 ? negSum / negCount : 0;
 
-	// Calculate variance/stddev of negative values
 	let negVarSum = 0;
 	for (let i = 0; i < w * h; i++) {
 		if (hpf[i] < 0) {
@@ -695,37 +670,18 @@ const processContourDebug = (
 	}
 	const negStdDev = negCount > 0 ? Math.sqrt(negVarSum / negCount) : 0;
 
-	// Threshold: Keep pixels significantly below the mean (more negative = stronger dark edge)
-	// "Auto tune" -> finding outliers.
-	// Try Mean - 1.0 * StdDev ?? Or just a percentile?
-	// Let's try to be adaptive.
 	const threshold = negMean - negStdDev * 0.5;
-
-	// But wait, user said "auto tune for low luminance".
-	// Maybe they meant: Filter by HPF to get edges, THEN threshold those edges by actual Luminance < "Auto Low"?
-	// "threshold auto tune for low luminance" -> could mean Otsu thresholding on the luminance channel, masked by HPF?
-	// Let's stick to the HPF response as the primary detector of "dark lines".
-	// A dark line has a strong negative HPF response.
-	// Also, usually pixel art lines are BLACK or very dark.
-	// So we can also enforce absolute luminance < 0.5 (128) just to be safe.
 
 	const candidates = new Uint8Array(w * h);
 	for (let i = 0; i < w * h; i++) {
-		// Check 1: Is it a "Negative Edge" (dark center vs surround)?
-		// Check 2: Is it stronger than our auto-threshold?
-		// Check 3: Is the pixel itself actually dark? (Avoids ringing artifacts in light areas)
-		if (hpf[i] < threshold && luminance[i] < 128) {
+		if (hpf[i] < threshold) {
 			candidates[i] = 1;
 		}
 	}
 
-	// 4. Despeckle (Remove Noisy Pixels)
-	// "Then removed noisy pixels" -> Isolate removal.
-	// Remove pixels with no neighbors? Or fewer than N neighbors?
-	// Let's require at least 1 neighbor to keep a pixel (kill single dots).
-	// Or closer to 2 for cleaner lines.
-
-	const output = new Uint8Array(w * h);
+	// 4. Smart Gap Bridging
+	const bridged = new Uint8Array(w * h);
+	bridged.set(candidates);
 
 	for (let y = 1; y < h - 1; y++) {
 		for (let x = 1; x < w - 1; x++) {
@@ -736,20 +692,218 @@ const processContourDebug = (
 			for (let dy = -1; dy <= 1; dy++) {
 				for (let dx = -1; dx <= 1; dx++) {
 					if (dx === 0 && dy === 0) continue;
-					if (candidates[(y + dy) * w + (x + dx)] === 1) {
-						neighbors++;
-					}
+					if (candidates[(y + dy) * w + (x + dx)] === 1) neighbors++;
 				}
 			}
 
-			// Despeckle rule: Require at least 1 connected neighbor
-			if (neighbors >= 1) {
-				output[idx] = 1;
+			if (neighbors <= 1) {
+				let bestDistSq = 100;
+				let bestNIdx = -1;
+
+				for (let dy = -2; dy <= 2; dy++) {
+					for (let dx = -2; dx <= 2; dx++) {
+						if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue;
+						const nx = x + dx;
+						const ny = y + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (candidates[nIdx] === 1) {
+								const distSq = dx * dx + dy * dy;
+								if (distSq < bestDistSq) {
+									bestDistSq = distSq;
+									bestNIdx = nIdx;
+								}
+							}
+						}
+					}
+				}
+
+				if (bestNIdx !== -1) {
+					const x1 = x;
+					const y1 = y;
+					const x2 = bestNIdx % w;
+					const y2 = (bestNIdx / w) | 0;
+
+					const dx = Math.abs(x2 - x1);
+					const dy = Math.abs(y2 - y1);
+					const sx = x1 < x2 ? 1 : -1;
+					const sy = y1 < y2 ? 1 : -1;
+					let err = dx - dy;
+
+					let cx = x1;
+					let cy = y1;
+
+					// Limit loop
+					for (let k = 0; k < 5; k++) {
+						bridged[cy * w + cx] = 1;
+						if (cx === x2 && cy === y2) break;
+						const e2 = 2 * err;
+						if (e2 > -dy) {
+							err -= dy;
+							cx += sx;
+						}
+						if (e2 < dx) {
+							err += dx;
+							cy += sy;
+						}
+					}
+				}
 			}
 		}
 	}
 
-	// 5. Render Output
+	// 5. Prune Short Paths
+	const output = new Uint8Array(w * h);
+	const visited = new Uint8Array(w * h);
+	const stack: number[] = [];
+	const component: number[] = [];
+
+	const MIN_COMPONENT_SIZE = 3;
+
+	for (let i = 0; i < w * h; i++) {
+		if (bridged[i] === 1 && visited[i] === 0) {
+			stack.push(i);
+			component.length = 0;
+			visited[i] = 1;
+
+			while (stack.length > 0) {
+				const curr = stack.pop();
+				if (curr === undefined) break;
+				component.push(curr);
+
+				const cx = curr % w;
+				const cy = (curr / w) | 0;
+
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						if (dx === 0 && dy === 0) continue;
+						const nx = cx + dx;
+						const ny = cy + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (bridged[nIdx] === 1 && visited[nIdx] === 0) {
+								visited[nIdx] = 1;
+								stack.push(nIdx);
+							}
+						}
+					}
+				}
+			}
+
+			if (component.length >= MIN_COMPONENT_SIZE) {
+				for (const idx of component) {
+					output[idx] = 1;
+				}
+			}
+		}
+	}
+	return output;
+};
+
+const getContourAverageColor = (
+	input: { data: Uint8ClampedArray; width: number; height: number },
+	mask: Uint8Array,
+): number => {
+	const srcData32 = new Uint32Array(input.data.buffer);
+	const samples: number[] = [];
+
+	for (let i = 0; i < mask.length; i++) {
+		// Only consider pixels part of the contour mask
+		if (mask[i] === 1) {
+			const val = srcData32[i];
+			const a = (val >> 24) & 0xff;
+
+			// Ignore transparent/semi-transparent pixels
+			if (a < 250) continue;
+
+			samples.push(val);
+		}
+	}
+
+	if (samples.length === 0) return 0xff0000ff; // Red fallback
+
+	// Sort samples by luminance to find the "ink" color (darkest)
+	// This avoids "washing out" the color with edge fringe pixels
+	samples.sort((a, b) => {
+		const ra = a & 0xff;
+		const ga = (a >> 8) & 0xff;
+		const ba = (a >> 16) & 0xff;
+		const lumA = 0.299 * ra + 0.587 * ga + 0.114 * ba;
+
+		const rb = b & 0xff;
+		const gb = (b >> 8) & 0xff;
+		const bb = (b >> 16) & 0xff;
+		const lumB = 0.299 * rb + 0.587 * gb + 0.114 * bb;
+
+		return lumA - lumB;
+	});
+
+	// Take the darkest 25% of pixels (or at least 1)
+	// This ensures we capture the core outline color, not the antialiasing
+	const count = Math.max(1, Math.floor(samples.length * 0.25));
+
+	let sumR = 0;
+	let sumG = 0;
+	let sumB = 0;
+
+	for (let i = 0; i < count; i++) {
+		const val = samples[i];
+		sumR += val & 0xff;
+		sumG += (val >> 8) & 0xff;
+		sumB += (val >> 16) & 0xff;
+	}
+
+	const avgR = (sumR / count) | 0;
+	const avgG = (sumG / count) | 0;
+	const avgB = (sumB / count) | 0;
+
+	// Always return fully opaque
+	return (255 << 24) | (avgB << 16) | (avgG << 8) | avgR;
+};
+
+const superimposeContour = (
+	target: RawImageData,
+	input: { data: Uint8ClampedArray; width: number; height: number },
+	overlayColor: number,
+): void => {
+	// Detect mask at source resolution
+	const mask = detectContours(input);
+
+	// Draw on target (Nearest Neighbor upscale)
+	const targetData32 = new Uint32Array(target.data.buffer);
+	const scaleX = target.width / input.width;
+	const scaleY = target.height / input.height;
+
+	// Iterate over TARGET pixels to check if they map to a mask pixel
+	// This ensures "continuous pixels and create no gaps" (blocky look)
+
+	for (let y = 0; y < target.height; y++) {
+		const srcY = Math.floor(y / scaleY);
+		if (srcY >= input.height) continue;
+
+		for (let x = 0; x < target.width; x++) {
+			const srcX = Math.floor(x / scaleX);
+			if (srcX >= input.width) continue;
+
+			if (mask[srcY * input.width + srcX] === 1) {
+				// Solid overwrite - no blending
+				targetData32[y * target.width + x] = overlayColor;
+			}
+		}
+	}
+};
+
+const processContourDebug = (
+	input: { data: Uint8ClampedArray; width: number; height: number },
+	_targetW: number,
+	_targetH: number,
+): RawImageData => {
+	const w = input.width;
+	const h = input.height;
+	const srcData32 = new Uint32Array(input.data.buffer);
+	const output = detectContours(input);
+
+	// Render Output
 	const outData = new Uint8ClampedArray(w * h * 4);
 	const outData32 = new Uint32Array(outData.buffer);
 
@@ -918,6 +1072,7 @@ const api: ScalerWorkerApi = {
 		waveletStrength,
 		deblurMethod,
 		maxColorsPerShade,
+		options, // New optional arg
 	) => {
 		const result = processSharpener(
 			input,
@@ -929,6 +1084,11 @@ const api: ScalerWorkerApi = {
 			deblurMethod,
 			maxColorsPerShade,
 		);
+		if (options?.overlayContours) {
+			const mask = detectContours(input);
+			const color = getContourAverageColor(input, mask);
+			superimposeContour(result, input, color);
+		}
 		return transferRaw(result);
 	},
 	processPaletteArea: async (input, targetW, targetH, palette) => {

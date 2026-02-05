@@ -17,6 +17,7 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
+		options?: any,
 	): Promise<string> => {
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;
@@ -46,6 +47,9 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 		const scalerWorkerApi = Comlink.wrap<ScalerWorkerApi>(scalerWorkerInstance);
 
 		try {
+			// Strip non-transferable options
+			const { onProgress, ...workerOptions } = options || {};
+
 			const outImage = await scalerWorkerApi.processPaletteArea(
 				Comlink.transfer(
 					{
@@ -58,6 +62,7 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 				targetW,
 				targetH,
 				palette,
+				workerOptions,
 			);
 
 			const arrayBuffer = new ArrayBuffer(outImage.data.byteLength);

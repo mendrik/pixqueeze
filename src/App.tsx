@@ -8,6 +8,7 @@ import { ResultsView } from "./components/ResultsView";
 import {
 	bilateralStrengthStore,
 	contourDebugResultStore,
+	contourOverlayStore,
 	deblurMethodStore,
 	imageStore,
 	isProcessingStore,
@@ -29,6 +30,7 @@ export const App = () => {
 	const bilateralStrength = useStore(bilateralStrengthStore);
 	const waveletStrength = useStore(waveletStrengthStore);
 	const maxColorsPerShade = useStore(maxColorsPerShadeStore);
+	const contourOverlay = useStore(contourOverlayStore);
 
 	const processFile = useCallback((file: Blob) => {
 		// Reset state for new upload
@@ -141,6 +143,7 @@ export const App = () => {
 					deblurMethod: deblurMethod,
 					onProgress: (p: number) => progressStore.set(p),
 					maxColorsPerShade: maxColorsPerShade,
+					overlayContours: contourOverlay,
 				});
 			}
 			processedResultsStore.set(results);
@@ -156,6 +159,7 @@ export const App = () => {
 		deblurMethod,
 		waveletStrength,
 		maxColorsPerShade,
+		contourOverlay,
 	]);
 
 	useEffect(() => {

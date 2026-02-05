@@ -8,6 +8,7 @@ export const NearestScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
+		options?: any,
 	): Promise<string> => {
 		const bitmap = await createImageBitmap(image);
 
@@ -17,10 +18,14 @@ export const NearestScaler: ScalingAlgorithm = {
 		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
 
 		try {
+			// Strip non-transferable options
+			const { onProgress, ...workerOptions } = options || {};
+
 			const rawData = await api.processNearest(
 				Comlink.transfer(bitmap, [bitmap]),
 				targetW,
 				targetH,
+				workerOptions,
 			);
 
 			const canvas = document.createElement("canvas");

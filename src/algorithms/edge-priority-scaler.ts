@@ -9,7 +9,7 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		options?: unknown,
+		options?: any,
 	): Promise<string> => {
 		const opt = options as { superpixelThreshold?: number };
 		const threshold = opt?.superpixelThreshold ?? 35;
@@ -31,6 +31,9 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
 
 		try {
+			// Strip non-transferable options
+			const { onProgress, ...workerOptions } = options || {};
+
 			const rawData = await api.processEdgePriority(
 				Comlink.transfer(
 					{
@@ -43,6 +46,7 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 				targetW,
 				targetH,
 				threshold,
+				workerOptions,
 			);
 
 			const canvas = document.createElement("canvas");

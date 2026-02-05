@@ -2,6 +2,7 @@ import { useStore } from "@nanostores/react";
 import { Loader2, Upload } from "lucide-react";
 import {
 	bilateralStrengthStore,
+	contourOverlayStore,
 	deblurMethodStore,
 	isProcessingStore,
 	maxColorsPerShadeStore,
@@ -109,6 +110,20 @@ export const Controls = ({
 					/>
 				</div>
 			)}
+
+			<div className="control-group">
+				<div className="control-header">
+					<span>CONTOUR</span>
+					<label className="toggle-switch">
+						<input
+							type="checkbox"
+							checked={useStore(contourOverlayStore)}
+							onChange={(e) => contourOverlayStore.set(e.target.checked)}
+						/>
+						<span className="slider round" />
+					</label>
+				</div>
+			</div>
 
 			<div className="control-group">
 				<div className="control-header">

@@ -29,7 +29,7 @@ export const MethodColumn = ({
 				</h3>
 			</div>
 
-			{[1, 2, 3].map((zoom) => (
+			{[1, 2].map((zoom) => (
 				<div
 					key={zoom}
 					className={`zoom-container ${isSkill ? "is-skill" : ""}`}

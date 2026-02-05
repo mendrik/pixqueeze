@@ -3,6 +3,7 @@ export type DeblurMethod = "none" | "bilateral" | "wavelet";
 
 export interface ScalingOptions {
 	onProgress?: (percent: number) => void;
+	overlayContours?: boolean; // New
 	[key: string]: unknown;
 }
 
@@ -47,12 +48,14 @@ export interface ScalerWorkerApi {
 		input: ImageBitmap,
 		targetW: number,
 		targetH: number,
+		options?: { overlayContours?: boolean },
 	): Promise<RawImageData>;
 
 	processBicubic(
 		input: ImageBitmap,
 		targetW: number,
 		targetH: number,
+		options?: { overlayContours?: boolean },
 	): Promise<RawImageData>;
 
 	processEdgePriority(
@@ -64,6 +67,14 @@ export interface ScalerWorkerApi {
 		targetW: number,
 		targetH: number,
 		threshold: number,
+		options?: {
+			superpixelThreshold?: number;
+			bilateralStrength?: number;
+			waveletStrength?: number;
+			deblurMethod?: DeblurMethod;
+			maxColorsPerShade?: number;
+			overlayContours?: boolean;
+		},
 	): Promise<RawImageData>;
 
 	processSharpener(
@@ -79,6 +90,7 @@ export interface ScalerWorkerApi {
 		waveletStrength: number,
 		deblurMethod: DeblurMethod,
 		maxColorsPerShade: number,
+		options?: { overlayContours?: boolean },
 	): Promise<RawImageData>;
 
 	processPaletteArea(
@@ -90,6 +102,7 @@ export interface ScalerWorkerApi {
 		targetW: number,
 		targetH: number,
 		palette: PaletteColor[],
+		options?: { overlayContours?: boolean },
 	): Promise<RawImageData>;
 
 	processContourDebug(
