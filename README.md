@@ -32,7 +32,7 @@ Enhance your results further with integrated processing steps:
 
 <p>Downscaled to 32 or 64 pixels respectively</p>
 
-Samples are nearest neighbout, palette area, bicubic, superpixel, superpixel with wavelet sharpening and palette reduction.
+Samples are nearest neighbour, palette area, bicubic, superpixel variant, superpixel with wavelet sharpening and palette reduction.
 
 <div align="center">
   <img width="2368" height="330" alt="image" src="https://github.com/user-attachments/assets/6f8833cd-d56c-4dd0-a250-36f51ae20970" />
