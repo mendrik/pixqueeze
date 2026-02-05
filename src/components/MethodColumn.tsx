@@ -7,6 +7,7 @@ interface MethodColumnProps {
 	method: string;
 	imageWidth: number;
 	overrideSrc?: string;
+	onZoom: (method: string) => void;
 }
 
 export const MethodColumn = ({
@@ -14,6 +15,7 @@ export const MethodColumn = ({
 	method,
 	imageWidth,
 	overrideSrc,
+	onZoom,
 }: MethodColumnProps) => {
 	const processedResults = useStore(processedResultsStore);
 	const isProcessing = useStore(isProcessingStore);
@@ -37,12 +39,19 @@ export const MethodColumn = ({
 					<span className="zoom-label">{zoom}x View</span>
 					<div className="zoom-viewport">
 						{url ? (
-							<img
-								src={url}
-								alt={title}
-								className="pixelated-img"
-								width={zoom * imageWidth}
-							/>
+							<button
+								type="button"
+								className="contents"
+								onClick={() => onZoom(method)}
+								aria-label={`Zoom ${title} result`}
+							>
+								<img
+									src={url}
+									alt={title}
+									className="pixelated-img cursor-pointer transition-transform hover:scale-[1.02]"
+									width={zoom * imageWidth}
+								/>
+							</button>
 						) : isProcessing ? (
 							<div className="loading-placeholder">
 								<Loader2 size={16} className="animate-spin opacity-20" />

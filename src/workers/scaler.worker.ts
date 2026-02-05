@@ -897,12 +897,6 @@ const superimposeContour = (
 		const gD = targetData[i + 1];
 		const bD = targetData[i + 2];
 
-		// Refinement 13: Conditional Blend based on Target Luminance
-		// Only apply contour if the target area is dark/mid-tone (L <= 0.5).
-		// This preserves bright highlights (glossy look).
-		const lum = 0.2126 * rD + 0.7152 * gD + 0.0722 * bD;
-		if (lum > 128) continue;
-
 		// "Darken Only" logic: keeps the darker of the two components
 		const rDark = Math.min(rD, rS);
 		const gDark = Math.min(gD, gS);
