@@ -45,7 +45,7 @@ Enhance your results further with integrated processing steps:
 
 <!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img width="2385" height="319" alt="image" src="https://github.com/user-attachments/assets/07d2378f-e1cf-4783-a23d-26e01f5460fb" />
+  <img width="2360" height="312" alt="image" src="https://github.com/user-attachments/assets/911e310f-75b8-4151-8502-ad2ab77c7fda" />
 </div>
 
 <!-- Placeholder for Main UI Screenshot -->
