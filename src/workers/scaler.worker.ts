@@ -797,99 +797,118 @@ const detectContours = (input: {
 			}
 		}
 	}
+
 	return output;
 };
 
-const getContourAverageColor = (
-	input: { data: Uint8ClampedArray; width: number; height: number },
-	mask: Uint8Array,
-): number => {
-	const srcData32 = new Uint32Array(input.data.buffer);
-	const samples: number[] = [];
+// Helper to extract ImageData from ImageBitmap
+const bitmapToImageData = (bitmap: ImageBitmap): RawImageData => {
+	const w = bitmap.width;
+	const h = bitmap.height;
+	const canvas = new OffscreenCanvas(w, h);
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("Offscreen context failed");
+	ctx.drawImage(bitmap, 0, 0);
+	const data = ctx.getImageData(0, 0, w, h);
+	return {
+		data: data.data,
+		width: w,
+		height: h,
+	};
+};
 
-	for (let i = 0; i < mask.length; i++) {
-		// Only consider pixels part of the contour mask
-		if (mask[i] === 1) {
-			const val = srcData32[i];
-			const a = (val >> 24) & 0xff;
+const scaleLayerBicubic = (
+	data: Uint8ClampedArray,
+	srcW: number,
+	srcH: number,
+	targetW: number,
+	targetH: number,
+): Uint8ClampedArray => {
+	const srcCanvas = new OffscreenCanvas(srcW, srcH);
+	const srcCtx = srcCanvas.getContext("2d");
+	if (!srcCtx) throw new Error("Offscreen context failed");
 
-			// Ignore transparent/semi-transparent pixels
-			if (a < 250) continue;
+	const srcImgData = new ImageData(data, srcW, srcH);
+	srcCtx.putImageData(srcImgData, 0, 0);
 
-			samples.push(val);
-		}
-	}
+	const destCanvas = new OffscreenCanvas(targetW, targetH);
+	const destCtx = destCanvas.getContext("2d");
+	if (!destCtx) throw new Error("Offscreen context failed");
 
-	if (samples.length === 0) return 0xff0000ff; // Red fallback
+	destCtx.imageSmoothingEnabled = true;
+	destCtx.imageSmoothingQuality = "high";
+	destCtx.drawImage(srcCanvas, 0, 0, targetW, targetH); // Scale
 
-	// Sort samples by luminance to find the "ink" color (darkest)
-	// This avoids "washing out" the color with edge fringe pixels
-	samples.sort((a, b) => {
-		const ra = a & 0xff;
-		const ga = (a >> 8) & 0xff;
-		const ba = (a >> 16) & 0xff;
-		const lumA = 0.299 * ra + 0.587 * ga + 0.114 * ba;
-
-		const rb = b & 0xff;
-		const gb = (b >> 8) & 0xff;
-		const bb = (b >> 16) & 0xff;
-		const lumB = 0.299 * rb + 0.587 * gb + 0.114 * bb;
-
-		return lumA - lumB;
-	});
-
-	// Take the darkest 25% of pixels (or at least 1)
-	// This ensures we capture the core outline color, not the antialiasing
-	const count = Math.max(1, Math.floor(samples.length * 0.25));
-
-	let sumR = 0;
-	let sumG = 0;
-	let sumB = 0;
-
-	for (let i = 0; i < count; i++) {
-		const val = samples[i];
-		sumR += val & 0xff;
-		sumG += (val >> 8) & 0xff;
-		sumB += (val >> 16) & 0xff;
-	}
-
-	const avgR = (sumR / count) | 0;
-	const avgG = (sumG / count) | 0;
-	const avgB = (sumB / count) | 0;
-
-	// Always return fully opaque
-	return (255 << 24) | (avgB << 16) | (avgG << 8) | avgR;
+	return destCtx.getImageData(0, 0, targetW, targetH).data;
 };
 
 const superimposeContour = (
 	target: RawImageData,
-	input: { data: Uint8ClampedArray; width: number; height: number },
-	overlayColor: number,
+	input: RawImageData,
 ): void => {
-	// Detect mask at source resolution
+	// 1. Detect Mask at Source Resolution
 	const mask = detectContours(input);
+	const srcW = input.width;
+	const srcH = input.height;
+	const srcData32 = new Uint32Array(input.data.buffer);
 
-	// Draw on target (Nearest Neighbor upscale)
-	const targetData32 = new Uint32Array(target.data.buffer);
-	const scaleX = target.width / input.width;
-	const scaleY = target.height / input.height;
+	// 2. Create Contour Layer (Full RGBA)
+	// We want to capture the source color at contour locations.
+	const contourLayer = new Uint8ClampedArray(srcW * srcH * 4);
+	const contourData32 = new Uint32Array(contourLayer.buffer);
 
-	// Iterate over TARGET pixels to check if they map to a mask pixel
-	// This ensures "continuous pixels and create no gaps" (blocky look)
-
-	for (let y = 0; y < target.height; y++) {
-		const srcY = Math.floor(y / scaleY);
-		if (srcY >= input.height) continue;
-
-		for (let x = 0; x < target.width; x++) {
-			const srcX = Math.floor(x / scaleX);
-			if (srcX >= input.width) continue;
-
-			if (mask[srcY * input.width + srcX] === 1) {
-				// Solid overwrite - no blending
-				targetData32[y * target.width + x] = overlayColor;
-			}
+	for (let i = 0; i < mask.length; i++) {
+		if (mask[i] === 1) {
+			// Copy source pixel (preserving Alpha)
+			contourData32[i] = srcData32[i];
+		} else {
+			// Transparent
+			contourData32[i] = 0;
 		}
+	}
+
+	// 3. Scale Contour Layer to Target Resolution (Bicubic)
+	// This creates a smooth, continuous layer with anti-aliasing
+	const scaledContour = scaleLayerBicubic(
+		contourLayer,
+		srcW,
+		srcH,
+		target.width,
+		target.height,
+	);
+
+	// 4. Composite (Darken Only)
+	// Darken Blend: Result = min(Target, Source)
+	// We must account for the contour opacity (alpha) from scaling.
+	// Out = Mix(Target, Darken(Target, Source), SourceAlpha)
+	const targetData = target.data;
+	const len = targetData.length;
+
+	for (let i = 0; i < len; i += 4) {
+		const rS = scaledContour[i];
+		const gS = scaledContour[i + 1];
+		const bS = scaledContour[i + 2];
+		const aS = scaledContour[i + 3] / 255.0; // 0..1
+
+		// Optimization: Skip if contour is essentially transparent
+		if (aS <= 0.01) continue;
+
+		const rD = targetData[i];
+		const gD = targetData[i + 1];
+		const bD = targetData[i + 2];
+
+		// "Darken Only" logic: keeps the darker of the two components
+		const rDark = Math.min(rD, rS);
+		const gDark = Math.min(gD, gS);
+		const bDark = Math.min(bD, bS);
+
+		// Blend the darkened result over the original target based on contour alpha
+		// This applies the "ink" only where the contour exists
+		targetData[i] = rDark * aS + rD * (1.0 - aS);
+		targetData[i + 1] = gDark * aS + gD * (1.0 - aS);
+		targetData[i + 2] = bDark * aS + bD * (1.0 - aS);
+
+		// We preserve the target alpha (assuming usually opaque background)
 	}
 };
 
@@ -1051,16 +1070,29 @@ const transferRaw = (raw: RawImageData) =>
 	Comlink.transfer(raw, [raw.data.buffer]) as unknown as RawImageData;
 
 const api: ScalerWorkerApi = {
-	processNearest: async (input, targetW, targetH) => {
+	processNearest: async (input, targetW, targetH, options) => {
 		const result = processNearest(input, targetW, targetH);
+		if (options?.overlayContours) {
+			// Converting ImageBitmap to ImageData so detectContours can read pixel data
+			const srcData = bitmapToImageData(input);
+			superimposeContour(result, srcData);
+		}
 		return transferRaw(result);
 	},
-	processBicubic: async (input, targetW, targetH) => {
+	processBicubic: async (input, targetW, targetH, options) => {
 		const result = processBicubic(input, targetW, targetH);
+		if (options?.overlayContours) {
+			const srcData = bitmapToImageData(input);
+			superimposeContour(result, srcData);
+		}
 		return transferRaw(result);
 	},
-	processEdgePriority: async (input, targetW, targetH, threshold) => {
+	processEdgePriority: async (input, targetW, targetH, threshold, options) => {
 		const result = processEdgePriorityBase(input, targetW, targetH, threshold);
+		if (options?.overlayContours) {
+			// EdgePriority receives RawImageData directly, no conversion needed
+			superimposeContour(result, input);
+		}
 		return transferRaw(result);
 	},
 	processSharpener: async (
@@ -1085,14 +1117,17 @@ const api: ScalerWorkerApi = {
 			maxColorsPerShade,
 		);
 		if (options?.overlayContours) {
-			const mask = detectContours(input);
-			const color = getContourAverageColor(input, mask);
-			superimposeContour(result, input, color);
+			// Sharpener receives RawImageData
+			superimposeContour(result, input);
 		}
 		return transferRaw(result);
 	},
-	processPaletteArea: async (input, targetW, targetH, palette) => {
+	processPaletteArea: async (input, targetW, targetH, palette, options) => {
 		const result = processPaletteArea(input, targetW, targetH, palette);
+		if (options?.overlayContours) {
+			// PaletteArea receives RawImageData
+			superimposeContour(result, input);
+		}
 		return transferRaw(result);
 	},
 	processContourDebug: async (input, targetW, targetH) => {
