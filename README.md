@@ -1,6 +1,6 @@
 # Pixqueeze - Superpixel Scaling
 
-**Pixqueeze** is a premium web-based image scaling application designed for high-quality upscaling of low-resolution images and pixel art. By utilizing advanced superpixel algorithms and intelligent post-processing, Pixqueeze preserves sharp edges and distinct features that traditional scaling methods often blur.
+**Pixqueeze** is a web-based image scaling application designed for high-quality downscaling of low-resolution images and pixel art.
 
 ---
 
@@ -30,27 +30,22 @@ Enhance your results further with integrated processing steps:
 
 ## 📸 Screen Shots & Samples
 
-<div>
-  <p>Source images</p>
-  <img width="182" height="128" alt="cat" src="https://github.com/user-attachments/assets/1b87dc41-e1ba-4663-85f8-ef6eb904441b" />
-  <img width="55" height="58" alt="pixel-fox" src="https://github.com/user-attachments/assets/ef7ca3e3-a705-48f4-b8a1-f4c01d9c110a" />
-  <img width="192" alt="mario" src="https://github.com/user-attachments/assets/6a57304e-8518-4827-983c-9d2f66a1ce1e" />
-</div>
-
 <p>Downscaled to 32 or 64 pixels respectively</p>
 
+Samples are nearest neighbout, palette area, bicubic, superpixel, superpixel with wavelet sharpening and palette reduction.
+
 <div align="center">
-  <img width="2335" height="289" alt="image" src="https://github.com/user-attachments/assets/fa08504f-600e-4d84-b5bd-7605ca9bae38" />
+  <img width="2368" height="330" alt="image" src="https://github.com/user-attachments/assets/6f8833cd-d56c-4dd0-a250-36f51ae20970" />
 </div>
 
 <!-- Placeholder for Comparison Samples -->
 <div align="center">
-  <img width="2385" height="319" alt="image" src="https://github.com/user-attachments/assets/07d2378f-e1cf-4783-a23d-26e01f5460fb" />
+  <img width="2360" height="312" alt="image" src="https://github.com/user-attachments/assets/911e310f-75b8-4151-8502-ad2ab77c7fda" />
 </div>
 
 <!-- Placeholder for Main UI Screenshot -->
 <div align="center">
-  <img width="2385" height="278" alt="image" src="https://github.com/user-attachments/assets/b3962347-0dc8-4c30-a463-e915b2867b89" />
+  <img width="2365" height="385" alt="image" src="https://github.com/user-attachments/assets/3ede9a0f-6020-4e8f-83c1-a02a7bb69677" />
 </div>
 
 <br>
