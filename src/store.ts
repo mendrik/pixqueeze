@@ -15,3 +15,4 @@ export const waveletStrengthStore = atom<number>(0.25);
 export const deblurMethodStore = atom<DeblurMethod>("wavelet");
 export const maxEdgeStore = atom<number>(128);
 export const maxColorsPerShadeStore = atom<number>(15);
+export const contourDebugResultStore = atom<string | null>(null);

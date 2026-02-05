@@ -91,4 +91,14 @@ export interface ScalerWorkerApi {
 		targetH: number,
 		palette: PaletteColor[],
 	): Promise<RawImageData>;
+
+	processContourDebug(
+		input: {
+			data: Uint8ClampedArray;
+			width: number;
+			height: number;
+		},
+		targetW: number,
+		targetH: number,
+	): Promise<RawImageData>;
 }

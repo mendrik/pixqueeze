@@ -602,6 +602,170 @@ const processSharpener = (
 	return processed;
 };
 
+const processContourDebug = (
+	input: { data: Uint8ClampedArray; width: number; height: number },
+	_targetW: number,
+	_targetH: number,
+): RawImageData => {
+	// User's Algorithm: High Pass Filter -> Auto-Tuned Threshold -> Despeckle
+
+	const w = input.width;
+	const h = input.height;
+	const srcData32 = new Uint32Array(input.data.buffer);
+
+	// 1. Luminance
+	const luminance = new Float32Array(w * h);
+	for (let i = 0; i < w * h; i++) {
+		const val = srcData32[i];
+		const r = val & 0xff;
+		const g = (val >> 8) & 0xff;
+		const b = (val >> 16) & 0xff;
+		luminance[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+	}
+
+	// 2. High Pass Filter (Laplacian)
+	// A simple 3x3 Laplacian kernel detects rapid intensity changes.
+	// Kernel:
+	// -1 -1 -1
+	// -1  8 -1
+	// -1 -1 -1
+	// For a dark line on light background (low lum on high lum):
+	// Center (Low) * 8 - Neighbors (High) -> Highly NEGATIVE value.
+	// For a light line on dark background:
+	// Center (High) * 8 - Neighbors (Low) -> Highly POSITIVE value.
+	// The user mentioned "threshold auto tune for LOW LUMINANCE", suggesting we target dark lines.
+	// So we are interested in the NEGATIVE response (or just low raw luminance values combined with edge strength).
+	// Let's compute the raw Laplacian response.
+
+	const hpf = new Float32Array(w * h);
+	let minResp = 0;
+	let maxResp = 0;
+
+	// We can also compute a simple "difference from local mean" as a high pass.
+	// But Laplacian is standard.
+
+	for (let y = 1; y < h - 1; y++) {
+		for (let x = 1; x < w - 1; x++) {
+			const idx = y * w + x;
+			let sum = 0;
+
+			// Center
+			sum += luminance[idx] * 8;
+
+			// Neighbors
+			sum -= luminance[(y - 1) * w + (x - 1)];
+			sum -= luminance[(y - 1) * w + x];
+			sum -= luminance[(y - 1) * w + (x + 1)];
+			sum -= luminance[y * w + (x - 1)];
+			sum -= luminance[y * w + (x + 1)];
+			sum -= luminance[(y + 1) * w + (x - 1)];
+			sum -= luminance[(y + 1) * w + x];
+			sum -= luminance[(y + 1) * w + (x + 1)];
+
+			hpf[idx] = sum;
+			if (sum < minResp) minResp = sum;
+			if (sum > maxResp) maxResp = sum;
+		}
+	}
+
+	// 3. Auto-Tune Threshold
+	// "Threshold auto tune for low luminance"
+	// Hypopthesis: We want pixels that represent dark edges.
+	// Dark edges have highly NEGATIVE Laplacian response (if center is dark vs surroundings).
+	// Let's analyze the distribution of NEGATIVE values.
+
+	// Calculate stats for negative responses (potential dark lines)
+	let negSum = 0;
+	let negCount = 0;
+	for (let i = 0; i < w * h; i++) {
+		if (hpf[i] < 0) {
+			negSum += hpf[i];
+			negCount++;
+		}
+	}
+
+	const negMean = negCount > 0 ? negSum / negCount : 0;
+
+	// Calculate variance/stddev of negative values
+	let negVarSum = 0;
+	for (let i = 0; i < w * h; i++) {
+		if (hpf[i] < 0) {
+			negVarSum += (hpf[i] - negMean) ** 2;
+		}
+	}
+	const negStdDev = negCount > 0 ? Math.sqrt(negVarSum / negCount) : 0;
+
+	// Threshold: Keep pixels significantly below the mean (more negative = stronger dark edge)
+	// "Auto tune" -> finding outliers.
+	// Try Mean - 1.0 * StdDev ?? Or just a percentile?
+	// Let's try to be adaptive.
+	const threshold = negMean - negStdDev * 0.5;
+
+	// But wait, user said "auto tune for low luminance".
+	// Maybe they meant: Filter by HPF to get edges, THEN threshold those edges by actual Luminance < "Auto Low"?
+	// "threshold auto tune for low luminance" -> could mean Otsu thresholding on the luminance channel, masked by HPF?
+	// Let's stick to the HPF response as the primary detector of "dark lines".
+	// A dark line has a strong negative HPF response.
+	// Also, usually pixel art lines are BLACK or very dark.
+	// So we can also enforce absolute luminance < 0.5 (128) just to be safe.
+
+	const candidates = new Uint8Array(w * h);
+	for (let i = 0; i < w * h; i++) {
+		// Check 1: Is it a "Negative Edge" (dark center vs surround)?
+		// Check 2: Is it stronger than our auto-threshold?
+		// Check 3: Is the pixel itself actually dark? (Avoids ringing artifacts in light areas)
+		if (hpf[i] < threshold && luminance[i] < 128) {
+			candidates[i] = 1;
+		}
+	}
+
+	// 4. Despeckle (Remove Noisy Pixels)
+	// "Then removed noisy pixels" -> Isolate removal.
+	// Remove pixels with no neighbors? Or fewer than N neighbors?
+	// Let's require at least 1 neighbor to keep a pixel (kill single dots).
+	// Or closer to 2 for cleaner lines.
+
+	const output = new Uint8Array(w * h);
+
+	for (let y = 1; y < h - 1; y++) {
+		for (let x = 1; x < w - 1; x++) {
+			const idx = y * w + x;
+			if (candidates[idx] === 0) continue;
+
+			let neighbors = 0;
+			for (let dy = -1; dy <= 1; dy++) {
+				for (let dx = -1; dx <= 1; dx++) {
+					if (dx === 0 && dy === 0) continue;
+					if (candidates[(y + dy) * w + (x + dx)] === 1) {
+						neighbors++;
+					}
+				}
+			}
+
+			// Despeckle rule: Require at least 1 connected neighbor
+			if (neighbors >= 1) {
+				output[idx] = 1;
+			}
+		}
+	}
+
+	// 5. Render Output
+	const outData = new Uint8ClampedArray(w * h * 4);
+	const outData32 = new Uint32Array(outData.buffer);
+
+	for (let i = 0; i < w * h; i++) {
+		// Skip edges
+		const x = i % w;
+		if (x === 0 || x === w - 1) continue;
+
+		if (output[i] === 1) {
+			outData32[i] = srcData32[i]; // Source color
+		}
+	}
+
+	return { data: outData, width: w, height: h };
+};
+
 const processPaletteArea = (
 	input: { data: Uint8ClampedArray; width: number; height: number },
 	targetW: number,
@@ -769,6 +933,10 @@ const api: ScalerWorkerApi = {
 	},
 	processPaletteArea: async (input, targetW, targetH, palette) => {
 		const result = processPaletteArea(input, targetW, targetH, palette);
+		return transferRaw(result);
+	},
+	processContourDebug: async (input, targetW, targetH) => {
+		const result = processContourDebug(input, targetW, targetH);
 		return transferRaw(result);
 	},
 };

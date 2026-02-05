@@ -1,11 +1,13 @@
 import { useStore } from "@nanostores/react";
 import { useCallback, useEffect } from "react";
 import { SCALERS } from "./algorithms";
+import { ContourDebugScaler } from "./algorithms/contour-debug-scaler";
+import logo from "./assets/fox-clean.png";
 import { Controls } from "./components/Controls";
 import { ResultsView } from "./components/ResultsView";
-import logo from "./assets/fox-clean.png";
 import {
 	bilateralStrengthStore,
+	contourDebugResultStore,
 	deblurMethodStore,
 	imageStore,
 	isProcessingStore,
@@ -28,12 +30,10 @@ export const App = () => {
 	const waveletStrength = useStore(waveletStrengthStore);
 	const maxColorsPerShade = useStore(maxColorsPerShadeStore);
 
-	const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
+	const processFile = useCallback((file: Blob) => {
 		// Reset state for new upload
 		processedResultsStore.set({});
+		contourDebugResultStore.set(null);
 		progressStore.set(0);
 
 		const reader = new FileReader();
@@ -87,7 +87,34 @@ export const App = () => {
 			img.src = event.target?.result as string;
 		};
 		reader.readAsDataURL(file);
+	}, []);
+
+	const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		processFile(file);
 	};
+
+	useEffect(() => {
+		const handlePaste = (e: ClipboardEvent) => {
+			const items = e.clipboardData?.items;
+			if (!items) return;
+
+			for (let i = 0; i < items.length; i++) {
+				if (items[i].type.indexOf("image") !== -1) {
+					const blob = items[i].getAsFile();
+					if (blob) {
+						processFile(blob);
+						e.preventDefault(); // Prevent default paste behavior
+						return;
+					}
+				}
+			}
+		};
+
+		window.addEventListener("paste", handlePaste);
+		return () => window.removeEventListener("paste", handlePaste);
+	}, [processFile]);
 
 	const processImages = useCallback(async () => {
 		if (!image) return;
@@ -100,6 +127,12 @@ export const App = () => {
 
 		try {
 			const results: Record<string, string> = {};
+
+			// Run Contour Debug independently
+			ContourDebugScaler.process(image, targetW, targetH).then((res) => {
+				contourDebugResultStore.set(res);
+			});
+
 			for (const scaler of SCALERS) {
 				results[scaler.id] = await scaler.process(image, targetW, targetH, {
 					superpixelThreshold: 35, // Default for now since control is removed
