@@ -891,7 +891,7 @@ const superimposeContour = (
 		const aS = scaledContour[i + 3] / 255.0; // 0..1
 
 		// Optimization: Skip if contour is essentially transparent
-		if (aS <= 0.01) continue;
+		if (aS <= 0.05) continue;
 
 		const rD = targetData[i];
 		const gD = targetData[i + 1];
@@ -1072,19 +1072,10 @@ const transferRaw = (raw: RawImageData) =>
 const api: ScalerWorkerApi = {
 	processNearest: async (input, targetW, targetH, options) => {
 		const result = processNearest(input, targetW, targetH);
-		if (options?.overlayContours) {
-			// Converting ImageBitmap to ImageData so detectContours can read pixel data
-			const srcData = bitmapToImageData(input);
-			superimposeContour(result, srcData);
-		}
 		return transferRaw(result);
 	},
 	processBicubic: async (input, targetW, targetH, options) => {
 		const result = processBicubic(input, targetW, targetH);
-		if (options?.overlayContours) {
-			const srcData = bitmapToImageData(input);
-			superimposeContour(result, srcData);
-		}
 		return transferRaw(result);
 	},
 	processEdgePriority: async (input, targetW, targetH, threshold, options) => {
@@ -1124,10 +1115,6 @@ const api: ScalerWorkerApi = {
 	},
 	processPaletteArea: async (input, targetW, targetH, palette, options) => {
 		const result = processPaletteArea(input, targetW, targetH, palette);
-		if (options?.overlayContours) {
-			// PaletteArea receives RawImageData
-			superimposeContour(result, input);
-		}
 		return transferRaw(result);
 	},
 	processContourDebug: async (input, targetW, targetH) => {
