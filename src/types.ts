@@ -35,7 +35,30 @@ export interface DeblurWorkerApi {
 }
 
 export interface ScalerWorkerApi {
-	processMegapixel(
+	processNearest(
+		input: ImageBitmap,
+		targetW: number,
+		targetH: number,
+	): Promise<RawImageData>;
+
+	processBicubic(
+		input: ImageBitmap,
+		targetW: number,
+		targetH: number,
+	): Promise<RawImageData>;
+
+	processContour(
+		input: {
+			data: Uint8ClampedArray;
+			width: number;
+			height: number;
+		},
+		targetW: number,
+		targetH: number,
+		threshold: number,
+	): Promise<RawImageData>;
+
+	processSharpener(
 		input: {
 			data: Uint8ClampedArray;
 			width: number;
@@ -45,6 +68,9 @@ export interface ScalerWorkerApi {
 		targetH: number,
 		threshold: number,
 		palette: PaletteColor[],
+		bilateralStrength: number,
+		waveletStrength: number,
+		deblurMethod: "none" | "bilateral" | "wavelet",
 	): Promise<RawImageData>;
 
 	processPaletteArea(
