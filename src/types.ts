@@ -71,6 +71,7 @@ export interface ScalerWorkerApi {
 		bilateralStrength: number,
 		waveletStrength: number,
 		deblurMethod: "none" | "bilateral" | "wavelet",
+		maxColorsPerShade: number,
 	): Promise<RawImageData>;
 
 	processPaletteArea(

@@ -4,6 +4,7 @@ import {
 	bilateralStrengthStore,
 	deblurMethodStore,
 	isProcessingStore,
+	maxColorsPerShadeStore,
 	maxEdgeStore,
 	targetEdgeStore,
 	waveletStrengthStore,
@@ -20,6 +21,7 @@ export const Controls = ({
 	const bilateralStrength = useStore(bilateralStrengthStore);
 	const waveletStrength = useStore(waveletStrengthStore);
 	const isProcessing = useStore(isProcessingStore);
+	const maxColorsPerShade = useStore(maxColorsPerShadeStore);
 	const maxEdge = useStore(maxEdgeStore);
 
 	return (
@@ -108,6 +110,24 @@ export const Controls = ({
 					/>
 				</div>
 			)}
+
+			<div className="control-group">
+				<div className="control-header">
+					<span>MAX COLORS/SHADE</span>
+					<span className="control-value">{maxColorsPerShade}</span>
+				</div>
+				<input
+					type="range"
+					min="1"
+					max="16"
+					step="1"
+					value={maxColorsPerShade}
+					onChange={(e) =>
+						maxColorsPerShadeStore.set(Number.parseInt(e.target.value, 10))
+					}
+					className="range-input"
+				/>
+			</div>
 
 			<HeaderPreview />
 

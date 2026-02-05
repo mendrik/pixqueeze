@@ -10,7 +10,7 @@ const softLimit = (x: number, limit: number): number => {
 };
 
 // Fast separable 3x3 blur for float data
-const fastBlur = (
+const _fastBlur = (
 	src: Float32Array,
 	dst: Float32Array,
 	w: number,
@@ -82,9 +82,12 @@ const applyWaveletSharpen = (
 			const idxT = (ym1 * w + x) << 2;
 			const idxB = (yp1 * w + x) << 2;
 			L1[idx] = (temp[idxT] + 2 * temp[idx] + temp[idxB]) * 0.25;
-			L1[idx + 1] = (temp[idxT + 1] + 2 * temp[idx + 1] + temp[idxB + 1]) * 0.25;
-			L1[idx + 2] = (temp[idxT + 2] + 2 * temp[idx + 2] + temp[idxB + 2]) * 0.25;
-			L1[idx + 3] = (temp[idxT + 3] + 2 * temp[idx + 3] + temp[idxB + 3]) * 0.25;
+			L1[idx + 1] =
+				(temp[idxT + 1] + 2 * temp[idx + 1] + temp[idxB + 1]) * 0.25;
+			L1[idx + 2] =
+				(temp[idxT + 2] + 2 * temp[idx + 2] + temp[idxB + 2]) * 0.25;
+			L1[idx + 3] =
+				(temp[idxT + 3] + 2 * temp[idx + 3] + temp[idxB + 3]) * 0.25;
 		}
 	}
 
@@ -496,6 +499,56 @@ const processContourBase = (
 	return { data: outData, width: targetW, height: targetH };
 };
 
+const optimizePalette = (
+	palette: PaletteColor[],
+	threshold: number,
+	maxColors: number
+): PaletteColor[] => {
+	const optimized: PaletteColor[] = [];
+	const remaining = [...palette];
+	const thresholdSq = threshold * threshold;
+
+	while (remaining.length > 0) {
+		const base = remaining.shift();
+		if (!base) break;
+		const group: PaletteColor[] = [base];
+		const nextRemaining: PaletteColor[] = [];
+
+		for (const color of remaining) {
+			const dr = base.r - color.r;
+			const dg = base.g - color.g;
+			const db = base.b - color.b;
+			if (dr * dr + dg * dg + db * db <= thresholdSq) {
+				group.push(color);
+			} else {
+				nextRemaining.push(color);
+			}
+		}
+
+		if (group.length <= maxColors) {
+			optimized.push(...group);
+		} else {
+			// Sort by luminance to pick diverse representatives
+			group.sort((a, b) => {
+				const lumA = 0.2126 * a.r + 0.7152 * a.g + 0.0722 * a.b;
+				const lumB = 0.2126 * b.r + 0.7152 * b.g + 0.0722 * b.b;
+				return lumA - lumB;
+			});
+
+			const step = (group.length - 1) / (maxColors - 1);
+			for (let i = 0; i < maxColors; i++) {
+				const index = Math.round(i * step);
+				optimized.push(group[index]);
+			}
+		}
+
+		remaining.length = 0;
+		remaining.push(...nextRemaining);
+	}
+
+	return optimized;
+};
+
 const processSharpener = (
 	input: { data: Uint8ClampedArray; width: number; height: number },
 	targetW: number,
@@ -505,45 +558,36 @@ const processSharpener = (
 	bilateralStrength: number,
 	waveletStrength: number,
 	deblurMethod: "none" | "bilateral" | "wavelet",
+	maxColorsPerShade: number,
 ): RawImageData => {
 	// 1. Scale using Contour logic
 	const scaled = processContourBase(input, targetW, targetH, threshold);
 
 	const len = targetW * targetH;
-	const outData32 = new Uint32Array(scaled.data.buffer);
 
-	// Pre-extract palette
-	const palette32 = new Uint32Array(palette.length);
-	for (let i = 0; i < palette.length; i++) {
-		const p = palette[i];
-		palette32[i] = (255 << 24) | (p.b << 16) | (p.g << 8) | p.r;
-	}
-
-	// 2. Initial Palette Snapping
-	for (let i = 0; i < len; i++) {
-		const val = outData32[i];
-		if (((val >> 24) & 0xff) > 25) {
-			const r = val & 0xff;
-			const g = (val >> 8) & 0xff;
-			const b = (val >> 16) & 0xff;
-			const best = findClosestColor({ r, g, b }, palette32);
-			outData32[i] = (val & 0xff000000) | (best & 0xffffff);
-		} else {
-			outData32[i] = 0;
-		}
-	}
-
+	// 2. Sharpening (applied on the scaled result directly)
 	let processed = scaled;
 
-	// 3. Sharpening
 	if (deblurMethod === "bilateral" && bilateralStrength > 0) {
 		processed = applyBilateralFilter(scaled, bilateralStrength);
 	} else if (deblurMethod === "wavelet") {
 		processed = applyWaveletSharpen(scaled, waveletStrength, 0.1);
 	}
 
-	// 4. De-AA (Final Snap)
-	// Re-snap to palette to remove anti-aliasing artifacts introduced by sharpening
+	// 3. Optimize Palette
+	// Merge almost identical colors to increase crispness.
+	// Threshold 30 (~900 squared)
+	const optimizedPalette = optimizePalette(palette, 30, maxColorsPerShade);
+
+	// Pre-extract optimized palette
+	const palette32 = new Uint32Array(optimizedPalette.length);
+	for (let i = 0; i < optimizedPalette.length; i++) {
+		const p = optimizedPalette[i];
+		palette32[i] = (255 << 24) | (p.b << 16) | (p.g << 8) | p.r;
+	}
+
+	// 4. Final Snap
+	// Snap to the optimized palette
 	const finalData32 = new Uint32Array(processed.data.buffer);
 	for (let i = 0; i < len; i++) {
 		const val = finalData32[i];
@@ -710,6 +754,7 @@ const api: ScalerWorkerApi = {
 		bilateralStrength,
 		waveletStrength,
 		deblurMethod,
+		maxColorsPerShade,
 	) => {
 		const result = processSharpener(
 			input,
@@ -720,6 +765,7 @@ const api: ScalerWorkerApi = {
 			bilateralStrength,
 			waveletStrength,
 			deblurMethod,
+			maxColorsPerShade,
 		);
 		// biome-ignore lint/suspicious/noExplicitAny: Transfer handling
 		return Comlink.transfer(result, [result.data.buffer]) as any;

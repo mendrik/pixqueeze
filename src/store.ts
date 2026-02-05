@@ -14,3 +14,4 @@ export const deblurMethodStore = atom<"none" | "bilateral" | "wavelet">(
 	"wavelet",
 );
 export const maxEdgeStore = atom<number>(128);
+export const maxColorsPerShadeStore = atom<number>(4);

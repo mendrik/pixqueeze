@@ -24,11 +24,13 @@ export const SharpenerScaler: ScalingAlgorithm = {
 			waveletStrength?: number;
 			deblurMethod?: "none" | "bilateral" | "wavelet";
 			onProgress?: (percent: number) => void;
+			maxColorsPerShade?: number;
 		};
 		const threshold = opt?.superpixelThreshold ?? 35;
 		const deblurMethod = opt?.deblurMethod ?? "none";
 		const bilateralStrength = opt?.bilateralStrength ?? 0;
 		const waveletStrength = opt?.waveletStrength ?? 0.5;
+		const maxColorsPerShade = opt?.maxColorsPerShade ?? 4;
 
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;
@@ -69,6 +71,7 @@ export const SharpenerScaler: ScalingAlgorithm = {
 				bilateralStrength,
 				waveletStrength,
 				deblurMethod as "none" | "bilateral" | "wavelet",
+				maxColorsPerShade,
 			);
 
 			const canvas = document.createElement("canvas");

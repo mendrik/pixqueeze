@@ -9,6 +9,7 @@ import {
 	deblurMethodStore,
 	imageStore,
 	isProcessingStore,
+	maxColorsPerShadeStore,
 	maxEdgeStore,
 	processedResultsStore,
 	progressStore,
@@ -25,6 +26,7 @@ export const App = () => {
 	const deblurMethod = useStore(deblurMethodStore);
 	const bilateralStrength = useStore(bilateralStrengthStore);
 	const waveletStrength = useStore(waveletStrengthStore);
+	const maxColorsPerShade = useStore(maxColorsPerShadeStore);
 
 	const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -105,6 +107,7 @@ export const App = () => {
 					waveletStrength: waveletStrength,
 					deblurMethod: deblurMethod,
 					onProgress: (p: number) => progressStore.set(p),
+					maxColorsPerShade: maxColorsPerShade,
 				});
 			}
 			processedResultsStore.set(results);
@@ -113,7 +116,14 @@ export const App = () => {
 		} finally {
 			isProcessingStore.set(false);
 		}
-	}, [image, targetEdge, bilateralStrength, deblurMethod, waveletStrength]);
+	}, [
+		image,
+		targetEdge,
+		bilateralStrength,
+		deblurMethod,
+		waveletStrength,
+		maxColorsPerShade,
+	]);
 
 	useEffect(() => {
 		if (!image) return;
