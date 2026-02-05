@@ -40,7 +40,7 @@ Enhance your results further with integrated processing steps:
 <p>Downscaled to 32 or 64 pixels respectively</p>
 
 <div align="center">
-  <img width="2335" height="289" alt="image" src="https://github.com/user-attachments/assets/fa08504f-600e-4d84-b5bd-7605ca9bae38" />
+  <img width="2368" height="330" alt="image" src="https://github.com/user-attachments/assets/6f8833cd-d56c-4dd0-a250-36f51ae20970" />
 </div>
 
 <!-- Placeholder for Comparison Samples -->
