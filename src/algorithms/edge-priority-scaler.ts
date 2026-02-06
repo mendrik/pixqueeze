@@ -1,5 +1,9 @@
 import * as Comlink from "comlink";
-import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
+import type {
+	ScalerWorkerApi,
+	ScalingAlgorithm,
+	ScalingOptions,
+} from "../types";
 
 /** Grid-constrained scored-growth edge-priority superpixel downscaling. */
 export const EdgePriorityScaler: ScalingAlgorithm = {
@@ -9,10 +13,9 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		options?: any,
+		options?: ScalingOptions,
 	): Promise<string> => {
-		const opt = options as { superpixelThreshold?: number };
-		const threshold = opt?.superpixelThreshold ?? 35;
+		const threshold = options?.superpixelThreshold ?? 35;
 
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;

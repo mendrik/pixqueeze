@@ -38,6 +38,7 @@ export interface ScalerWorkerApi {
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
+		options?: ScalingOptions,
 	) => Promise<RawImageData>;
 	processBicubic: (
 		input: RawImageData | ImageBitmap,
@@ -51,6 +52,7 @@ export interface ScalerWorkerApi {
 		targetW: number,
 		targetH: number,
 		palette: PaletteColor[],
+		options?: ScalingOptions,
 	) => Promise<RawImageData>;
 	processEdgePriority: (
 		input: RawImageData | ImageBitmap,

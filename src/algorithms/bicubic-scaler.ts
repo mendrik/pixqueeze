@@ -1,5 +1,9 @@
 import * as Comlink from "comlink";
-import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
+import type {
+	ScalerWorkerApi,
+	ScalingAlgorithm,
+	ScalingOptions,
+} from "../types";
 
 export const BicubicScaler: ScalingAlgorithm = {
 	name: "Bicubic",
@@ -8,7 +12,7 @@ export const BicubicScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		options?: any,
+		options?: ScalingOptions,
 	): Promise<string> => {
 		const bitmap = await createImageBitmap(image);
 

@@ -1,5 +1,9 @@
 import * as Comlink from "comlink";
-import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
+import type {
+	ScalerWorkerApi,
+	ScalingAlgorithm,
+	ScalingOptions,
+} from "../types";
 import { extractPalette } from "../utils/palette";
 
 /**
@@ -17,7 +21,7 @@ export const PaletteAreaScaler: ScalingAlgorithm = {
 		image: HTMLImageElement,
 		targetW: number,
 		targetH: number,
-		options?: any,
+		options?: ScalingOptions,
 	): Promise<string> => {
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;

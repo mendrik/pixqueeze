@@ -795,47 +795,6 @@ const computeEdgeMap = (
 	return { candidates, hpf };
 };
 
-const bridgeEdges = (
-	candidates: Uint8Array,
-	w: number,
-	h: number,
-): Uint8Array => {
-	const bridged = new Uint8Array(w * h);
-	bridged.set(candidates);
-
-	for (let y = 1; y < h - 1; y++) {
-		for (let x = 1; x < w - 1; x++) {
-			const idx = y * w + x;
-			if (candidates[idx] === 0) {
-				// Check for gap between two contour pixels
-				// Horizontal
-				if (candidates[idx - 1] === 1 && candidates[idx + 1] === 1) {
-					bridged[idx] = 1;
-				}
-				// Vertical
-				else if (candidates[idx - w] === 1 && candidates[idx + w] === 1) {
-					bridged[idx] = 1;
-				}
-				// Diagonal 1
-				else if (
-					candidates[idx - w - 1] === 1 &&
-					candidates[idx + w + 1] === 1
-				) {
-					bridged[idx] = 1;
-				}
-				// Diagonal 2
-				else if (
-					candidates[idx - w + 1] === 1 &&
-					candidates[idx + w - 1] === 1
-				) {
-					bridged[idx] = 1;
-				}
-			}
-		}
-	}
-	return bridged;
-};
-
 const detectContours = (input: {
 	data: Uint8ClampedArray;
 	width: number;
@@ -1121,18 +1080,26 @@ const ensureRawImageData = async (
 };
 
 const api: ScalerWorkerApi = {
-	processNearest: async (input, targetW, targetH) => {
-		const bitmap = await ensureImageBitmap(input);
+	processNearest: async (input, targetW, targetH, options) => {
+		const rawInput = await ensureRawImageData(input);
+		const bitmap = await ensureImageBitmap(rawInput);
 		const result = processNearest(bitmap, targetW, targetH);
+		if (options?.overlayContours) {
+			superimposeContour(result, rawInput);
+		}
 		return transferRaw(result);
 	},
-	processBicubic: async (input, targetW, targetH, _options) => {
-		const bitmap = await ensureImageBitmap(input);
+	processBicubic: async (input, targetW, targetH, options) => {
+		const rawInput = await ensureRawImageData(input);
+		const bitmap = await ensureImageBitmap(rawInput);
 		const result = processBicubic(bitmap, targetW, targetH);
+		if (options?.overlayContours) {
+			superimposeContour(result, rawInput);
+		}
 		return transferRaw(result);
 	},
 
-	processEdgePriority: async (input, targetW, targetH, threshold, _options) => {
+	processEdgePriority: async (input, targetW, targetH, threshold, options) => {
 		const rawInput = await ensureRawImageData(input);
 		const result = processEdgePriorityBase(
 			rawInput,
@@ -1140,6 +1107,9 @@ const api: ScalerWorkerApi = {
 			targetH,
 			threshold,
 		);
+		if (options?.overlayContours) {
+			superimposeContour(result, rawInput);
+		}
 		return transferRaw(result);
 	},
 	processSharpener: async (
@@ -1169,9 +1139,12 @@ const api: ScalerWorkerApi = {
 		}
 		return transferRaw(result);
 	},
-	processPaletteArea: async (input, targetW, targetH, palette) => {
+	processPaletteArea: async (input, targetW, targetH, palette, options) => {
 		const rawInput = await ensureRawImageData(input);
 		const result = processPaletteArea(rawInput, targetW, targetH, palette);
+		if (options?.overlayContours) {
+			superimposeContour(result, rawInput);
+		}
 		return transferRaw(result);
 	},
 	extractPalette: async (input, maxColors) => {
@@ -1185,8 +1158,6 @@ const api: ScalerWorkerApi = {
 		const h = rawInput.height;
 
 		const { candidates, hpf } = computeEdgeMap(rawInput, HP_SIGMA, HP_CONTRAST);
-
-		const contourOut = bridgeEdges(candidates, w, h);
 
 		// Clamp negative values for visualization
 		// HPF values are roughly -255*8 to 255*8.
@@ -1217,7 +1188,7 @@ const api: ScalerWorkerApi = {
 		const contourData32 = new Uint32Array(contourData.buffer);
 		const srcData32 = new Uint32Array(rawInput.data.buffer);
 		for (let i = 0; i < w * h; i++) {
-			if (contourOut[i]) {
+			if (candidates[i]) {
 				contourData32[i] = srcData32[i];
 			}
 		}
