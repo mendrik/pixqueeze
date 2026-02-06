@@ -548,20 +548,29 @@ const processContrastAwareBase = (
 	const srcData = input.data;
 	const srcData32 = new Uint32Array(srcData.buffer);
 
-	const visited = new Uint8Array(srcW * srcH);
+	const visited = new Uint32Array(srcW * srcH).fill(0xffffffff); // Stores cluster ID (target pixel index)
 	const outData = new Uint8ClampedArray(targetW * targetH * 4);
 	const outData32 = new Uint32Array(outData.buffer);
 
-	// Priority queue setup
-	const heapIdx = new Int32Array(srcW * srcH);
-	const heapScore = new Float32Array(srcW * srcH);
+	// Accumulators for colors for each target cluster
+	const accR = new Float64Array(targetW * targetH);
+	const accG = new Float64Array(targetW * targetH);
+	const accB = new Float64Array(targetW * targetH);
+	const accA = new Float64Array(targetW * targetH);
+	const counts = new Uint32Array(targetW * targetH);
+
+	// Global Priority Queue (Heap)
+	// We use a Float32Array for scores and Int32Array for pixel indices
+	const MAX_PIXELS = srcW * srcH;
+	const heapIdx = new Int32Array(MAX_PIXELS);
+	const heapScore = new Float32Array(MAX_PIXELS);
 	let heapSize = 0;
 
 	const pushHeap = (idx: number, score: number) => {
 		let i = heapSize++;
 		while (i > 0) {
 			const p = (i - 1) >> 1;
-			if (heapScore[p] >= score) break;
+			if (heapScore[p] <= score) break;
 			heapScore[i] = heapScore[p];
 			heapIdx[i] = heapIdx[p];
 			i = p;
@@ -573,16 +582,16 @@ const processContrastAwareBase = (
 	const popHeap = () => {
 		if (heapSize === 0) return -1;
 		const res = heapIdx[0];
-		const lastIdx = heapIdx[--heapSize];
-		const lastScore = heapScore[heapSize];
+		const lastScore = heapScore[--heapSize];
+		const lastIdx = heapIdx[heapSize];
 		let i = 0;
 		while (true) {
 			let child = (i << 1) + 1;
 			if (child >= heapSize) break;
-			if (child + 1 < heapSize && heapScore[child + 1] > heapScore[child]) {
+			if (child + 1 < heapSize && heapScore[child + 1] < heapScore[child]) {
 				child++;
 			}
-			if (lastScore >= heapScore[child]) break;
+			if (lastScore <= heapScore[child]) break;
 			heapScore[i] = heapScore[child];
 			heapIdx[i] = heapIdx[child];
 			i = child;
@@ -592,188 +601,101 @@ const processContrastAwareBase = (
 		return res;
 	};
 
-	const dx = [1, -1, 0, 0];
-	const dy = [0, 0, 1, -1];
-
-	const SIGNIFICANT_CONTRAST = 15;
+	// 1. Initialize Seeds for each target pixel
+	const seedCentersX = new Float32Array(targetW * targetH);
+	const seedCentersY = new Float32Array(targetW * targetH);
+	const seedColors = new Uint32Array(targetW * targetH);
 
 	for (let ty = 0; ty < targetH; ty++) {
 		for (let tx = 0; tx < targetW; tx++) {
-			const cellMinX = ((tx * srcW) / targetW) | 0;
-			const cellMaxX = (((tx + 1) * srcW) / targetW - 1) | 0;
-			const cellMinY = ((ty * srcH) / targetH) | 0;
-			const cellMaxY = (((ty + 1) * srcH) / targetH - 1) | 0;
+			const clusterId = ty * targetW + tx;
+			const sx = (((tx + 0.5) * srcW) / targetW) | 0;
+			const sy = (((ty + 0.5) * srcH) / targetH) | 0;
+			const sIdx = sy * srcW + sx;
 
-			let seedIdx = -1;
-			let maxContrast = -1;
+			seedCentersX[clusterId] = (tx + 0.5) * (srcW / targetW);
+			seedCentersY[clusterId] = (ty + 0.5) * (srcH / targetH);
+			seedColors[clusterId] = srcData32[sIdx];
 
-			// Find seed
-			for (let cy = cellMinY; cy <= cellMaxY; cy++) {
-				for (let cx = cellMinX; cx <= cellMaxX; cx++) {
-					const idx = cy * srcW + cx;
-					const val = srcData32[idx];
-					if (((val >> 24) & 0xff) < 25) continue;
+			visited[sIdx] = clusterId;
+			pushHeap(sIdx, 0); // Seeds have 0 distance to themselves
+		}
+	}
 
-					let sumDiff = 0;
-					let nCount = 0;
-					const lum =
-						0.2126 * (val & 0xff) +
-						0.7152 * ((val >> 8) & 0xff) +
-						0.0722 * ((val >> 16) & 0xff);
+	const dx = [1, -1, 0, 0];
+	const dy = [0, 0, 1, -1];
 
-					for (let ni = -1; ni <= 1; ni++) {
-						for (let nj = -1; nj <= 1; nj++) {
-							if (ni === 0 && nj === 0) continue;
-							const nx = cx + ni;
-							const ny = cy + nj;
-							if (nx >= 0 && nx < srcW && ny >= 0 && ny < srcH) {
-								const nVal = srcData32[ny * srcW + nx];
-								const nLum =
-									0.2126 * (nVal & 0xff) +
-									0.7152 * ((nVal >> 8) & 0xff) +
-									0.0722 * ((nVal >> 16) & 0xff);
-								sumDiff += Math.abs(nLum - lum);
-								nCount++;
-							}
-						}
-					}
-					const contrast = sumDiff / (nCount || 1);
-					if (contrast > maxContrast) {
-						maxContrast = contrast;
-						seedIdx = idx;
-					}
-				}
-			}
+	// Spatial weight (higher means more grid-like, lower means more color-sensitive clustering)
+	// We'll calculate a weight that scales with the cell size.
+	const SPATIAL_WEIGHT =
+		0.5 / Math.max(1, (srcW / targetW + srcH / targetH) / 2);
 
-			if (seedIdx === -1) {
-				seedIdx =
-					((((ty + 0.5) * srcH) / targetH) | 0) * srcW +
-					((((tx + 0.5) * srcW) / targetW) | 0);
-			}
+	// 2. Multi-Seed Dijkstra Expansion
+	while (heapSize > 0) {
+		const curIdx = popHeap();
+		const clusterId = visited[curIdx];
 
-			const seedVal = srcData32[seedIdx];
-			const r0 = seedVal & 0xff;
-			const g0 = (seedVal >> 8) & 0xff;
-			const b0 = (seedVal >> 16) & 0xff;
-			const l0 = (0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0) / 255;
-			const centerX = (cellMinX + cellMaxX) * 0.5;
-			const centerY = (cellMinY + cellMaxY) * 0.5;
+		const val = srcData32[curIdx];
+		accR[clusterId] += val & 0xff;
+		accG[clusterId] += (val >> 8) & 0xff;
+		accB[clusterId] += (val >> 16) & 0xff;
+		accA[clusterId] += (val >> 24) & 0xff;
+		counts[clusterId]++;
 
-			let accR = 0;
-			let accG = 0;
-			let accB = 0;
-			let accA = 0;
-			let count = 0;
+		const cx = curIdx % srcW;
+		const cy = (curIdx / srcW) | 0;
 
-			heapSize = 0;
-			pushHeap(seedIdx, 1000);
+		const cR = seedColors[clusterId] & 0xff;
+		const cG = (seedColors[clusterId] >> 8) & 0xff;
+		const cB = (seedColors[clusterId] >> 16) & 0xff;
 
-			while (heapSize > 0) {
-				const curIdx = popHeap();
-				if (visited[curIdx]) continue;
-				visited[curIdx] = 1;
+		const cX = seedCentersX[clusterId];
+		const cY = seedCentersY[clusterId];
 
-				const val = srcData32[curIdx];
-				accR += val & 0xff;
-				accG += (val >> 8) & 0xff;
-				accB += (val >> 16) & 0xff;
-				accA += (val >> 24) & 0xff;
-				count++;
+		for (let i = 0; i < 4; i++) {
+			const nx = cx + dx[i];
+			const ny = cy + dy[i];
+			if (nx < 0 || nx >= srcW || ny < 0 || ny >= srcH) continue;
 
-				const cx = curIdx % srcW;
-				const cy = (curIdx / srcW) | 0;
+			const nIdx = ny * srcW + nx;
+			if (visited[nIdx] !== 0xffffffff) continue;
 
-				for (let i = 0; i < 4; i++) {
-					const nx = cx + dx[i];
-					const ny = cy + dy[i];
-					if (nx < cellMinX || nx > cellMaxX || ny < cellMinY || ny > cellMaxY)
-						continue;
-					const nIdx = ny * srcW + nx;
-					if (visited[nIdx]) continue;
+			const nVal = srcData32[nIdx];
+			const nr = nVal & 0xff;
+			const ng = (nVal >> 8) & 0xff;
+			const nb = (nVal >> 16) & 0xff;
 
-					const nVal = srcData32[nIdx];
-					const nr = nVal & 0xff;
-					const ng = (nVal >> 8) & 0xff;
-					const nb = (nVal >> 16) & 0xff;
+			// Color distance + Spatial penalty
+			const dr = nr - cR;
+			const dg = ng - cG;
+			const db = nb - cB;
+			// Use threshold to normalize color distance.
+			// If threshold is 15, then colorDist of 15 is equal to spatialDist of 1 unit.
+			const colorDist =
+				Math.sqrt(dr * dr + dg * dg + db * db) / (threshold || 1);
 
-					if (
-						Math.abs(nr - r0) + Math.abs(ng - g0) + Math.abs(nb - b0) <=
-						threshold
-					) {
-						const nLum = (0.2126 * nr + 0.7152 * ng + 0.0722 * nb) / 255;
-						const colorSim = 1.0 / (0.01 + Math.abs(nLum - l0));
+			const distToCenterSq = (nx - cX) * (nx - cX) + (ny - cY) * (ny - cY);
+			const spatialDist = Math.sqrt(distToCenterSq);
 
-						let nSumDiff = 0;
-						let nNCount = 0;
-						for (let ni = -1; ni <= 1; ni++) {
-							for (let nj = -1; nj <= 1; nj++) {
-								if (ni === 0 && nj === 0) continue;
-								const nnx = nx + ni;
-								const nny = ny + nj;
-								if (nnx >= 0 && nnx < srcW && nny >= 0 && nny < srcH) {
-									const nnVal = srcData32[nny * srcW + nnx];
-									nSumDiff += Math.abs(
-										0.2126 * (nnVal & 0xff) +
-											0.7152 * ((nnVal >> 8) & 0xff) +
-											0.0722 * ((nnVal >> 16) & 0xff) -
-											nLum * 255,
-									);
-									nNCount++;
-								}
-							}
-						}
-						const nContrast = nSumDiff / (nNCount || 1) / 255;
-						const distToCenterSq =
-							(nx - centerX) * (nx - centerX) + (ny - centerY) * (ny - centerY);
-						const cogBoost = 1.0 / (0.5 + Math.sqrt(distToCenterSq));
-						const score = colorSim * (1.0 + nContrast * 5.0) * cogBoost;
-						pushHeap(nIdx, score);
-					}
-				}
-			}
+			const score = colorDist + spatialDist * SPATIAL_WEIGHT;
 
-			// Decide output color based on contrast
-			if (maxContrast >= SIGNIFICANT_CONTRAST) {
-				// Contrast rich cell: Use only the cluster pixels
-				const div = count || 1;
-				const r = (accR / div) | 0;
-				const g = (accG / div) | 0;
-				const b = (accB / div) | 0;
-				const a = (accA / div) | 0;
-				outData32[ty * targetW + tx] = (a << 24) | (b << 16) | (g << 8) | r;
+			visited[nIdx] = clusterId;
+			pushHeap(nIdx, score);
+		}
+	}
 
-				// Clean remaining pixels in cell (so they are not used as seeds or joined)
-				for (let cy = cellMinY; cy <= cellMaxY; cy++) {
-					for (let cx = cellMinX; cx <= cellMaxX; cx++) {
-						visited[cy * srcW + cx] = 1;
-					}
-				}
-			} else {
-				// Flat/low-contrast cell: Average everything for smoothness
-				let cellR = 0,
-					cellG = 0,
-					cellB = 0,
-					cellA = 0,
-					cellCount = 0;
-				for (let cy = cellMinY; cy <= cellMaxY; cy++) {
-					for (let cx = cellMinX; cx <= cellMaxX; cx++) {
-						const idx = cy * srcW + cx;
-						visited[idx] = 1;
-						const val = srcData32[idx];
-						cellR += val & 0xff;
-						cellG += (val >> 8) & 0xff;
-						cellB += (val >> 16) & 0xff;
-						cellA += (val >> 24) & 0xff;
-						cellCount++;
-					}
-				}
-				const div = cellCount || 1;
-				outData32[ty * targetW + tx] =
-					((cellA / div) << 24) |
-					((cellB / div) << 16) |
-					((cellG / div) << 8) |
-					((cellR / div) | 0);
-			}
+	// 3. Resolve Final Colors
+	for (let ty = 0; ty < targetH; ty++) {
+		for (let tx = 0; tx < targetW; tx++) {
+			const clusterId = ty * targetW + tx;
+			const count = counts[clusterId] || 1;
+
+			const r = (accR[clusterId] / count) | 0;
+			const g = (accG[clusterId] / count) | 0;
+			const b = (accB[clusterId] / count) | 0;
+			const a = (accA[clusterId] / count) | 0;
+
+			outData32[ty * targetW + tx] = (a << 24) | (b << 16) | (g << 8) | r;
 		}
 	}
 
@@ -1392,16 +1314,14 @@ const api: ScalerWorkerApi = {
 	},
 	processContrastAware: async (input, targetW, targetH, threshold, options) => {
 		const rawInput = await ensureRawImageData(input);
-		const result = processContrastAwareBase(
+		const baseResult = processContrastAwareBase(
 			rawInput,
 			targetW,
 			targetH,
 			threshold,
 		);
-		if (options?.overlayContours) {
-			superimposeContour(result, rawInput);
-		}
-		return transferRaw(result);
+		//		const result = applyLCornerAA(baseResult);
+		return transferRaw(baseResult);
 	},
 	extractPalette: async (input, maxColors) => {
 		const rawInput = await ensureRawImageData(input);
