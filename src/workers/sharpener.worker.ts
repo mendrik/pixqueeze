@@ -3,6 +3,7 @@ import { expose } from "comlink";
 import type { RawImageData, ScalingOptions } from "../types";
 import { processSharpener } from "./scalers/sharpener";
 import { ensureRawImageData } from "./utils";
+import { applyContourOverlay } from "./utils/contour";
 
 const api = {
 	processSharpener: async (
@@ -12,7 +13,7 @@ const api = {
 		options?: ScalingOptions,
 	): Promise<RawImageData> => {
 		const rawInput = await ensureRawImageData(input);
-		return processSharpener(
+		const result = processSharpener(
 			rawInput,
 			targetW,
 			targetH,
@@ -21,6 +22,12 @@ const api = {
 			options?.waveletStrength || 0,
 			options?.maxColorsPerShade || 0,
 		);
+
+		if (options?.overlayContours) {
+			return applyContourOverlay(result, rawInput);
+		}
+
+		return result;
 	},
 };
 
