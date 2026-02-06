@@ -6,16 +6,16 @@ import {
 	phase3DebugResultStore,
 } from "../store";
 import type {
-	ContrastAwareWorkerApi,
+	Artist2xWorkerApi,
 	RawImageData,
 	ScalingAlgorithm,
 	ScalingOptions,
 } from "../types";
 
-/** Superpixel scaling that preserves high-contrast features to avoid pollution. */
-export const ContrastAwareScaler: ScalingAlgorithm = {
-	name: "Contrast Aware",
-	id: "contrast-aware",
+/** Artist 2x: A dedicated 2x downscaler optimized for pixel art. */
+export const Artist2xScaler: ScalingAlgorithm = {
+	name: "Artist 2x",
+	id: "artist-2x",
 	process: async (
 		image: HTMLImageElement,
 		targetW: number,
@@ -34,15 +34,16 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 		const srcData = srcCtx.getImageData(0, 0, srcW, srcH).data;
 
 		const workerInstance = new (
-			await import("../workers/contrast-aware.worker?worker")
+			await import("../workers/artist-2x.worker?worker")
 		).default();
-		const api = Comlink.wrap<ContrastAwareWorkerApi>(workerInstance);
+		const api = Comlink.wrap<Artist2xWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options
 			const { onProgress, ...workerOptions } = options || {};
 
-			const res = await api.processContrastAware(
+			// We pass targetW/targetH but the worker ignores them for 2x scaling logic.
+			const res = await api.processArtist2x(
 				Comlink.transfer(
 					{
 						data: srcData,
@@ -73,10 +74,6 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 			};
 
 			// Handle union type: could be RawImageData or { result, debugPhases }
-			// The worker wrapper logic I added returns { result, debugPhases } if debugContrastAware is true.
-			// Since we set debugContrastAware: true, we expect the object.
-			// But types say it's a union. We can cast or check.
-
 			let rawData: RawImageData;
 
 			// Helper to check if it's the extended object
@@ -97,9 +94,13 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 				rawData = res as RawImageData;
 			}
 
+			// Use the actual dimensions returned by the worker (since it forces 2x)
+			const finalW = rawData.width;
+			const finalH = rawData.height;
+
 			const canvas = document.createElement("canvas");
-			canvas.width = targetW;
-			canvas.height = targetH;
+			canvas.width = finalW;
+			canvas.height = finalH;
 			const ctx = canvas.getContext("2d");
 			if (!ctx) throw new Error("Output canvas context unavailable");
 
@@ -108,7 +109,7 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 			new Uint8Array(arrayBuffer).set(new Uint8Array(rawData.data.buffer));
 			const safeData = new Uint8ClampedArray(arrayBuffer);
 
-			const imgData = new ImageData(safeData, targetW, targetH);
+			const imgData = new ImageData(safeData, finalW, finalH);
 			ctx.putImageData(imgData, 0, 0);
 			return canvas.toDataURL();
 		} finally {

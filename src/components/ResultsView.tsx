@@ -2,11 +2,12 @@ import { useStore } from "@nanostores/react";
 import { ImageIcon } from "lucide-react";
 import { useState } from "react";
 import { SCALERS } from "../algorithms";
-import { processedResultsStore, targetEdgeStore } from "../store";
+import { imageStore, processedResultsStore, targetEdgeStore } from "../store";
 import { MethodColumn } from "./MethodColumn";
 import { ZoomDialog } from "./ZoomDialog";
 
 export const ResultsView = ({ hasImage }: { hasImage: boolean }) => {
+	const currentImage = useStore(imageStore);
 	const targetEdge = useStore(targetEdgeStore);
 	const processedResults = useStore(processedResultsStore);
 	const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
@@ -40,15 +41,24 @@ export const ResultsView = ({ hasImage }: { hasImage: boolean }) => {
 	return (
 		<>
 			<div className="results-grid">
-				{SCALERS.map((scaler) => (
-					<MethodColumn
-						key={scaler.id}
-						title={scaler.name}
-						method={scaler.id}
-						imageWidth={targetEdge}
-						onZoom={setSelectedMethod}
-					/>
-				))}
+				{SCALERS.map((scaler) => {
+					// Artist 2x always outputs at 50% of source width, ignoring targetEdge.
+					// We display it at its natural result size appropriately.
+					const displayWidth =
+						scaler.id === "artist-2x"
+							? Math.floor((currentImage?.naturalWidth ?? 0) / 2)
+							: targetEdge;
+
+					return (
+						<MethodColumn
+							key={scaler.id}
+							title={scaler.name}
+							method={scaler.id}
+							imageWidth={displayWidth}
+							onZoom={setSelectedMethod}
+						/>
+					);
+				})}
 			</div>
 
 			{selectedMethod && selectedScaler && (

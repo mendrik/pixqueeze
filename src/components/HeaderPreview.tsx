@@ -66,7 +66,7 @@ export const HeaderPreview = () => {
 					title="Contours"
 				/>
 			)}
-			{p0 && (
+			{p0 && debug && (
 				<img
 					src={p0}
 					alt="P0"
@@ -75,7 +75,7 @@ export const HeaderPreview = () => {
 					title="Phase 0: Stats"
 				/>
 			)}
-			{p1 && (
+			{p1 && debug && (
 				<img
 					src={p1}
 					alt="P1"
@@ -84,7 +84,7 @@ export const HeaderPreview = () => {
 					title="Phase 1: Easy Lines"
 				/>
 			)}
-			{p2 && (
+			{p2 && debug && (
 				<img
 					src={p2}
 					alt="P2"
@@ -93,7 +93,7 @@ export const HeaderPreview = () => {
 					title="Phase 2: Flat Areas"
 				/>
 			)}
-			{p3 && (
+			{p3 && debug && (
 				<img
 					src={p3}
 					alt="P3"

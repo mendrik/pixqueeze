@@ -74,9 +74,9 @@ export interface SharpenerWorkerApi {
 	) => Promise<RawImageData>;
 }
 
-export interface ContrastAwareWorkerApi {
+export interface Artist2xWorkerApi {
 	// Updated return type to support debug phases
-	processContrastAware: (
+	processArtist2x: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
@@ -101,7 +101,7 @@ export interface ScalerWorkerApi
 		BicubicWorkerApi,
 		EdgePriorityWorkerApi,
 		SharpenerWorkerApi,
-		ContrastAwareWorkerApi {
+		Artist2xWorkerApi {
 	// These were in the old monolithic interface but implemented?
 	// processPaletteArea // removed from monolithic worker
 	// extractPalette // removed from monolithic worker

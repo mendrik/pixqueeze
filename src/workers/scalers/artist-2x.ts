@@ -1,9 +1,12 @@
 import type { RawImageData, ScalingOptions } from "../../types";
 
-export const processContrastAwareBase = (
+// Artist 2x: A dedicated 2x downscaler optimized for pixel art.
+// Forces 2x2 superpixels regardless of input target dimensions.
+
+export const processArtist2x = (
 	input: { data: Uint8ClampedArray; width: number; height: number },
-	targetW: number,
-	targetH: number,
+	_requestedW: number,
+	_requestedH: number,
 	_threshold: number,
 	options?: ScalingOptions,
 ): {
@@ -15,12 +18,14 @@ export const processContrastAwareBase = (
 } => {
 	const { data, width: srcW, height: srcH } = input;
 	const src32 = new Uint32Array(data.buffer);
+
+	// Force 2x downscaling
+	const targetW = Math.floor(srcW / 2);
+	const targetH = Math.floor(srcH / 2);
 	const outData = new Uint8ClampedArray(targetW * targetH * 4);
 	const out32 = new Uint32Array(outData.buffer);
 
-	targetW = targetW | 0;
-	targetH = targetH | 0;
-	const E = Math.max(1, Math.round(srcW / targetW)); // Edge length (min 1)
+	const E = 2; // Always 2x2 blocks
 	const COLOR_SIMILARITY_THRESHOLD = 30; // Small threshold to handle noise
 
 	// Constants
@@ -479,13 +484,6 @@ export const processContrastAwareBase = (
 					}
 
 					if (info.nIntra + effectiveNInter >= 2 && effectiveNInter >= 1) {
-						promoted = true;
-						break;
-					}
-				}
-				// Condition C2: Center pixel (E=3 special case)
-				else if (E === 3 && info.isCenter) {
-					if (info.nIntra >= 2) {
 						promoted = true;
 						break;
 					}
