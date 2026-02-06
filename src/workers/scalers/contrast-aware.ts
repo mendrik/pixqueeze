@@ -398,6 +398,8 @@ export const processContrastAwareBase = (
 	// --- Phase 2: Fill rules (Priority hierarchy) ---
 	for (let i = 0; i < grid.length; i++) {
 		const sp = grid[i];
+		const ty = Math.floor(i / targetW);
+		const tx = i % targetW;
 
 		// Rule A: hcCount >= E
 		if (sp.hcCount >= E) {
@@ -417,12 +419,66 @@ export const processContrastAwareBase = (
 		if (sp.hcCount > 0 && sp.hcCount < E) {
 			let promoted = false;
 
-			for (const [_pxIdx, info] of sp.hcPixels) {
+			for (const [pxIdx, info] of sp.hcPixels) {
 				const nTotal = info.nIntra + info.nInter;
 
 				// Condition C1: Edge pixel
 				if (info.isEdge) {
-					if (nTotal >= 2 && info.nInter >= 1) {
+					// Recalculate 'effective' nInter: only count neighbors that are ALREADY FilledHC (or guaranteed to be)
+					// This prevents staircase boundaries from expanding into uncertain territory.
+					let effectiveNInter = 0;
+
+					// Recover local coordinates (sx, sy) from pxIdx (flat index 0..E*E-1)
+					const sy = Math.floor(pxIdx / E);
+					const sx = pxIdx % E;
+
+					// Neighbors to check (N, S, E, W) - same order as Phase 1 helps, but logic is independent
+					const neighbors = [
+						{ dx: 0, dy: -1 }, // N
+						{ dx: 0, dy: 1 }, // S
+						{ dx: 1, dy: 0 }, // E
+						{ dx: -1, dy: 0 }, // W
+					];
+
+					for (const { dx, dy } of neighbors) {
+						let ntx = tx;
+						let nty = ty;
+						let nsx = sx + dx;
+						let nsy = sy + dy;
+
+						// Handle boundary crossing to find neighbor superpixel coords
+						if (nsx < 0) {
+							ntx--;
+							nsx = E - 1;
+						} else if (nsx >= E) {
+							ntx++;
+							nsx = 0;
+						}
+						if (nsy < 0) {
+							nty--;
+							nsy = E - 1;
+						} else if (nsy >= E) {
+							nty++;
+							nsy = 0;
+						}
+
+						// Check if valid neighbor
+						if (isHC(ntx, nty, nsx, nsy)) {
+							// Determine if it is Inter or Intra
+							if (ntx !== tx || nty !== ty) {
+								// Inter-superpixel neighbor. Check its state.
+								const nidx = nty * targetW + ntx;
+								const nsp = grid[nidx];
+
+								// Criterion: Must be "FilledHC" (already visited/set) OR "Guaranteed to be FilledHC" (hcCount >= E)
+								if (nsp.state === CellState.FilledHC || nsp.hcCount >= E) {
+									effectiveNInter++;
+								}
+							}
+						}
+					}
+
+					if (info.nIntra + effectiveNInter >= 2 && effectiveNInter >= 1) {
 						promoted = true;
 						break;
 					}
