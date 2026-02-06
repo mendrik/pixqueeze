@@ -6,6 +6,8 @@ import {
 	thresholdDebugResultStore,
 } from "../store";
 
+const debug = false;
+
 export const HeaderPreview = () => {
 	const image = useStore(imageStore);
 	const contourDebug = useStore(contourDebugResultStore);
@@ -29,7 +31,7 @@ export const HeaderPreview = () => {
 				className="preview-image"
 				title={`${image.width}x${image.height}`}
 			/>
-			{highPassDebug && (
+			{highPassDebug && debug && (
 				<img
 					src={highPassDebug}
 					alt="High Pass"
@@ -38,7 +40,7 @@ export const HeaderPreview = () => {
 					title="High Pass Filter"
 				/>
 			)}
-			{thresholdDebug && (
+			{thresholdDebug && debug && (
 				<img
 					src={thresholdDebug}
 					alt="Threshold"
@@ -47,7 +49,7 @@ export const HeaderPreview = () => {
 					title="Threshold"
 				/>
 			)}
-			{contourDebug && (
+			{contourDebug && debug && (
 				<img
 					src={contourDebug}
 					alt="Contour Debug"

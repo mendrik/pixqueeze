@@ -836,7 +836,6 @@ const bridgeEdges = (
 	return bridged;
 };
 
-
 const detectContours = (input: {
 	data: Uint8ClampedArray;
 	width: number;
@@ -1216,13 +1215,10 @@ const api: ScalerWorkerApi = {
 		// Let's assume white pixels on transparent for countour.
 		const contourData = new Uint8ClampedArray(w * h * 4);
 		const contourData32 = new Uint32Array(contourData.buffer);
+		const srcData32 = new Uint32Array(rawInput.data.buffer);
 		for (let i = 0; i < w * h; i++) {
 			if (contourOut[i]) {
-				// Green? The user context mentioned "transparent green lines".
-				// Let's stick to standard whitish/greenish or check usage.
-				// HeaderPreview shows it.
-				// Let's go with Green (0, 255, 0).
-				contourData32[i] = (255 << 24) | (0 << 16) | (255 << 8) | 0;
+				contourData32[i] = srcData32[i];
 			}
 		}
 
