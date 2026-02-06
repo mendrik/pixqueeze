@@ -10,6 +10,7 @@ import {
 	contourDebugResultStore,
 	contourOverlayStore,
 	deblurMethodStore,
+	highPassDebugResultStore,
 	imageStore,
 	isProcessingStore,
 	maxColorsPerShadeStore,
@@ -17,6 +18,7 @@ import {
 	processedResultsStore,
 	progressStore,
 	targetEdgeStore,
+	thresholdDebugResultStore,
 	waveletStrengthStore,
 } from "./store";
 import "./App.css";
@@ -132,7 +134,9 @@ export const App = () => {
 
 			// Run Contour Debug independently
 			ContourDebugScaler.process(image, targetW, targetH).then((res) => {
-				contourDebugResultStore.set(res);
+				contourDebugResultStore.set(res.contour);
+				highPassDebugResultStore.set(res.highPass);
+				thresholdDebugResultStore.set(res.threshold);
 			});
 
 			for (const scaler of SCALERS) {

@@ -1,71 +1,52 @@
-import { wrap } from "comlink";
-import {
-	contourDebugResultStore,
-	highPassDebugResultStore,
-	thresholdDebugResultStore,
-} from "../store";
-import type { ScalerWorkerApi, ScalingAlgorithm } from "../types";
-import ScalerWorker from "../workers/scaler.worker?worker";
+import * as Comlink from "comlink";
+import type { RawImageData, ScalerWorkerApi } from "../types";
 
-const worker = wrap<ScalerWorkerApi>(new ScalerWorker());
+const rawToUrl = (raw: RawImageData): string => {
+	const canvas = document.createElement("canvas");
+	canvas.width = raw.width;
+	canvas.height = raw.height;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("Canvas context failed");
 
-export const ContourDebugScaler: ScalingAlgorithm = {
+	// Reconstruct Uint8ClampedArray
+	const arrayBuffer = new ArrayBuffer(raw.data.byteLength);
+	new Uint8Array(arrayBuffer).set(new Uint8Array(raw.data.buffer));
+	const safeData = new Uint8ClampedArray(arrayBuffer);
+
+	const imgData = new ImageData(safeData, raw.width, raw.height);
+	ctx.putImageData(imgData, 0, 0);
+	return canvas.toDataURL();
+};
+
+export const ContourDebugScaler = {
 	name: "Contour Debug",
 	id: "contour-debug",
-	process: async (image, targetW, targetH, _options) => {
-		const canvas = document.createElement("canvas");
-		canvas.width = image.width;
-		canvas.height = image.height;
-		const ctx = canvas.getContext("2d");
-		if (!ctx) throw new Error("Canvas context failed");
-		ctx.drawImage(image, 0, 0);
-		const imageData = ctx.getImageData(0, 0, image.width, image.height);
+	process: async (
+		image: HTMLImageElement,
+		targetW: number,
+		targetH: number,
+	): Promise<{ contour: string; highPass: string; threshold: string }> => {
+		const bitmap = await createImageBitmap(image);
 
-		const result = await worker.processContourDebug(
-			{
-				data: imageData.data,
-				width: imageData.width,
-				height: imageData.height,
-			},
-			targetW,
-			targetH,
-		);
+		const workerInstance = new (
+			await import("../workers/scaler.worker?worker")
+		).default();
+		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
 
-		const toDataURL = (raw: typeof result.contour) => {
-			const outCanvas = document.createElement("canvas");
-			outCanvas.width = raw.width;
-			outCanvas.height = raw.height;
-			const outCtx = outCanvas.getContext("2d");
-			if (!outCtx) return "";
-
-			const outImgData = new ImageData(
-				// biome-ignore lint/suspicious/noExplicitAny: ImageData constructor mismatch fix
-				raw.data as any,
-				raw.width,
-				raw.height,
+		try {
+			const result = await api.processContourDebug(
+				Comlink.transfer(bitmap, [bitmap]),
+				targetW,
+				targetH,
 			);
-			outCtx.putImageData(outImgData, 0, 0);
-			return outCanvas.toDataURL("image/png");
-		};
 
-		const contourUrl = toDataURL(result.contour);
-		const highPassUrl = toDataURL(result.highPass);
-		const thresholdUrl = toDataURL(result.threshold);
-
-		// We need to import the stores to set them.
-		// Since this is a regular module, we can import stores.
-		// However, to avoid circular dependencies if stores import algorithms (unlikely but possible),
-		// let's check imports. `contour-debug-scaler.ts` imports types. `store.ts` imports types.
-		// It should be fine.
-
-		// Wait, I need to import the stores. I'll add the import in a separate tool call if needed,
-		// or use dynamic import if I can't see the top of the file right now (I saw it earlier, it only imports from types and worker).
-
-		// Update stores with side-effect results
-		highPassDebugResultStore.set(highPassUrl);
-		thresholdDebugResultStore.set(thresholdUrl);
-		contourDebugResultStore.set(contourUrl);
-
-		return contourUrl; // Main result
+			return {
+				contour: rawToUrl(result.contour),
+				highPass: rawToUrl(result.highPass),
+				threshold: rawToUrl(result.threshold),
+			};
+		} finally {
+			workerInstance.terminate();
+		}
 	},
 };

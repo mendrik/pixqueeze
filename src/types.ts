@@ -1,10 +1,25 @@
-// Domain Types
-export type DeblurMethod = "none" | "bilateral" | "wavelet";
+export interface PaletteColor {
+	r: number;
+	g: number;
+	b: number;
+}
+
+export type DeblurMethod = "none" | "wavelet" | "bilateral";
 
 export interface ScalingOptions {
-	onProgress?: (percent: number) => void;
-	overlayContours?: boolean; // New
-	[key: string]: unknown;
+	superpixelThreshold?: number;
+	bilateralStrength?: number;
+	waveletStrength?: number;
+	deblurMethod?: DeblurMethod;
+	maxColorsPerShade?: number;
+	overlayContours?: boolean;
+	onProgress?: (p: number) => void;
+}
+
+export interface RawImageData {
+	data: Uint8ClampedArray;
+	width: number;
+	height: number;
 }
 
 export interface ScalingAlgorithm {
@@ -18,71 +33,35 @@ export interface ScalingAlgorithm {
 	) => Promise<string>;
 }
 
-export interface PaletteColor {
-	readonly r: number;
-	readonly g: number;
-	readonly b: number;
-	readonly count?: number;
-}
-
-export interface RawImageData {
-	readonly data: Uint8ClampedArray;
-	readonly width: number;
-	readonly height: number;
-}
-
-export interface DeblurWorkerApi {
-	applyBilateral(
-		imageData: RawImageData,
-		strength: number,
-	): Promise<RawImageData>;
-	applyWavelet(
-		imageData: RawImageData,
-		strength: number,
-		clamp: number,
-	): Promise<RawImageData>;
-}
-
 export interface ScalerWorkerApi {
-	processNearest(
-		input: ImageBitmap,
+	processNearest: (
+		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		options?: { overlayContours?: boolean },
-	): Promise<RawImageData>;
-
-	processBicubic(
-		input: ImageBitmap,
+	) => Promise<RawImageData>;
+	processBicubic: (
+		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		options?: { overlayContours?: boolean },
-	): Promise<RawImageData>;
+		options?: ScalingOptions,
+	) => Promise<RawImageData>;
 
-	processEdgePriority(
-		input: {
-			data: Uint8ClampedArray;
-			width: number;
-			height: number;
-		},
+	processPaletteArea: (
+		input: RawImageData | ImageBitmap,
+		targetW: number,
+		targetH: number,
+		palette: PaletteColor[],
+	) => Promise<RawImageData>;
+	processEdgePriority: (
+		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
 		threshold: number,
-		options?: {
-			superpixelThreshold?: number;
-			bilateralStrength?: number;
-			waveletStrength?: number;
-			deblurMethod?: DeblurMethod;
-			maxColorsPerShade?: number;
-			overlayContours?: boolean;
-		},
-	): Promise<RawImageData>;
+		options?: ScalingOptions,
+	) => Promise<RawImageData>;
 
-	processSharpener(
-		input: {
-			data: Uint8ClampedArray;
-			width: number;
-			height: number;
-		},
+	processSharpener: (
+		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
 		threshold: number,
@@ -90,30 +69,18 @@ export interface ScalerWorkerApi {
 		waveletStrength: number,
 		deblurMethod: DeblurMethod,
 		maxColorsPerShade: number,
-		options?: { overlayContours?: boolean },
-	): Promise<RawImageData>;
+		options?: ScalingOptions,
+	) => Promise<RawImageData>;
 
-	processPaletteArea(
-		input: {
-			data: Uint8ClampedArray;
-			width: number;
-			height: number;
-		},
+	extractPalette: (
+		input: RawImageData | ImageBitmap,
+		maxColors: number,
+	) => Promise<PaletteColor[]>;
+	processContourDebug: (
+		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		palette: PaletteColor[],
-		options?: { overlayContours?: boolean },
-	): Promise<RawImageData>;
-
-	processContourDebug(
-		input: {
-			data: Uint8ClampedArray;
-			width: number;
-			height: number;
-		},
-		targetW: number,
-		targetH: number,
-	): Promise<{
+	) => Promise<{
 		contour: RawImageData;
 		highPass: RawImageData;
 		threshold: RawImageData;
