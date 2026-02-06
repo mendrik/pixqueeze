@@ -1,5 +1,12 @@
 import * as Comlink from "comlink";
+import {
+	phase0DebugResultStore,
+	phase1DebugResultStore,
+	phase2DebugResultStore,
+	phase3DebugResultStore,
+} from "../store";
 import type {
+	RawImageData,
 	ScalerWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
@@ -37,7 +44,7 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 			// Strip non-transferable options
 			const { onProgress, ...workerOptions } = options || {};
 
-			const rawData = await api.processContrastAware(
+			const res = await api.processContrastAware(
 				Comlink.transfer(
 					{
 						data: srcData,
@@ -49,8 +56,30 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 				targetW,
 				targetH,
 				threshold,
-				workerOptions,
+				{ ...workerOptions, debugContrastAware: true },
 			);
+
+			const rawData = res.result;
+
+			const toDataURL = (raw: RawImageData) => {
+				const c = document.createElement("canvas");
+				c.width = raw.width;
+				c.height = raw.height;
+				const ctx = c.getContext("2d");
+				if (!ctx) return null;
+				// Rebuild a fresh ArrayBuffer no matter what the worker returned
+				const arrayBuffer = new ArrayBuffer(raw.data.byteLength);
+				new Uint8Array(arrayBuffer).set(new Uint8Array(raw.data.buffer));
+				const safeData = new Uint8ClampedArray(arrayBuffer);
+				const imgData = new ImageData(safeData, raw.width, raw.height);
+				ctx.putImageData(imgData, 0, 0);
+				return c.toDataURL();
+			};
+
+			if (res.phase0) phase0DebugResultStore.set(toDataURL(res.phase0));
+			if (res.phase1) phase1DebugResultStore.set(toDataURL(res.phase1));
+			if (res.phase2) phase2DebugResultStore.set(toDataURL(res.phase2));
+			if (res.phase3) phase3DebugResultStore.set(toDataURL(res.phase3));
 
 			const canvas = document.createElement("canvas");
 			canvas.width = targetW;

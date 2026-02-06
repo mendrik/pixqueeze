@@ -5,7 +5,7 @@ import type { DeblurMethod } from "./types";
 export type Point = Readonly<{ x: number; y: number }>;
 
 export const imageStore = atom<HTMLImageElement | null>(null);
-export const targetEdgeStore = atom<number>(64);
+export const targetEdgeStore = atom<number>(73);
 // New Stores
 export const isProcessingStore = atom<boolean>(false);
 export const progressStore = atom<number>(0);
@@ -19,3 +19,7 @@ export const contourDebugResultStore = atom<string | null>(null);
 export const highPassDebugResultStore = atom<string | null>(null);
 export const thresholdDebugResultStore = atom<string | null>(null);
 export const contourOverlayStore = atom<boolean>(false);
+export const phase0DebugResultStore = atom<string | null>(null);
+export const phase1DebugResultStore = atom<string | null>(null);
+export const phase2DebugResultStore = atom<string | null>(null);
+export const phase3DebugResultStore = atom<string | null>(null);

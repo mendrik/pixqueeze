@@ -13,6 +13,7 @@ export interface ScalingOptions {
 	deblurMethod?: DeblurMethod;
 	maxColorsPerShade?: number;
 	overlayContours?: boolean;
+	debugContrastAware?: boolean;
 	onProgress?: (p: number) => void;
 }
 
@@ -93,5 +94,11 @@ export interface ScalerWorkerApi {
 		targetH: number,
 		threshold: number,
 		options?: ScalingOptions,
-	) => Promise<RawImageData>;
+	) => Promise<{
+		result: RawImageData;
+		phase0?: RawImageData;
+		phase1?: RawImageData;
+		phase2?: RawImageData;
+		phase3?: RawImageData;
+	}>;
 }
