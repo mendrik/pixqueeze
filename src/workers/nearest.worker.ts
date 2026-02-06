@@ -1,8 +1,7 @@
 /// <reference lib="webworker" />
 import { expose } from "comlink";
-import { processNearest } from "./scalers/nearest";
-import { ensureRawImageData } from "./utils";
 import type { RawImageData, ScalingOptions } from "../types";
+import { processNearest } from "./scalers/nearest";
 
 const api = {
 	processNearest: async (

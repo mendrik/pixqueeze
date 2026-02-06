@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 import { expose } from "comlink";
+import type { RawImageData, ScalingOptions } from "../types";
 import { processSharpener } from "./scalers/sharpener";
 import { ensureRawImageData } from "./utils";
-import type { RawImageData, ScalingOptions } from "../types";
 
 const api = {
 	processSharpener: async (

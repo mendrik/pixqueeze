@@ -12,9 +12,6 @@ export interface ScalingOptions {
 	bilateralStrength?: number;
 	waveletStrength?: number;
 	maxColorsPerShade?: number;
-
-	// Contrast Aware options
-	debugContrastAware?: boolean;
 }
 
 export type PaletteColor = { r: number; g: number; b: number; count: number };
@@ -74,34 +71,12 @@ export interface SharpenerWorkerApi {
 	) => Promise<RawImageData>;
 }
 
-export interface Artist2xWorkerApi {
-	// Updated return type to support debug phases
-	processArtist2x: (
-		input: RawImageData | ImageBitmap,
-		targetW: number,
-		targetH: number,
-		options?: ScalingOptions,
-	) => Promise<
-		| RawImageData
-		| {
-				result: RawImageData;
-				debugPhases?: {
-					phase0?: RawImageData;
-					phase1?: RawImageData;
-					phase2?: RawImageData;
-					phase3?: RawImageData;
-				};
-		  }
-	>;
-}
-
 // Legacy monolithic API (can be removed later or kept for compatibility if needed)
 export interface ScalerWorkerApi
 	extends NearestWorkerApi,
 		BicubicWorkerApi,
 		EdgePriorityWorkerApi,
-		SharpenerWorkerApi,
-		Artist2xWorkerApi {
+		SharpenerWorkerApi {
 	// These were in the old monolithic interface but implemented?
 	// processPaletteArea // removed from monolithic worker
 	// extractPalette // removed from monolithic worker

@@ -38,12 +38,12 @@ export const ZoomDialog = ({
 	if (!isOpen) return null;
 
 	return (
-		<div
+		<button
+			type="button"
 			className="zoom-dialog-overlay"
 			onClick={onClose}
 			onKeyDown={(e) => e.key === "Escape" && onClose()}
-			role="button"
-			tabIndex={0}
+			aria-label="Close zoom dialog"
 		>
 			<button
 				type="button"
@@ -58,6 +58,7 @@ export const ZoomDialog = ({
 			</button>
 
 			<div className="zoom-dialog-content" role="presentation">
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: Stop propagation to prevent closing */}
 				<h2
 					className="dialog-title"
 					onClick={(e) => e.stopPropagation()}
@@ -67,6 +68,7 @@ export const ZoomDialog = ({
 					{title}
 				</h2>
 				<div className="zoom-wrapper" role="presentation">
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: Complex click-aside logic */}
 					<img
 						src={imageSrc}
 						alt={title}
@@ -130,6 +132,6 @@ export const ZoomDialog = ({
 			>
 				<ChevronRight size={32} />
 			</button>
-		</div>
+		</button>
 	);
 };

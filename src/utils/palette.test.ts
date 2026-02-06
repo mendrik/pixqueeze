@@ -44,8 +44,12 @@ describe("Palette Utils", () => {
 
 		const palette = extractPalette(imageData);
 		expect(palette).toHaveLength(2);
-		expect(palette).toContainEqual({ r: 255, g: 0, b: 0 });
-		expect(palette).toContainEqual({ r: 0, g: 255, b: 0 });
+		expect(palette).toContainEqual(
+			expect.objectContaining({ r: 255, g: 0, b: 0 }),
+		);
+		expect(palette).toContainEqual(
+			expect.objectContaining({ r: 0, g: 255, b: 0 }),
+		);
 	});
 
 	it("optimizes palette by merging close colors", () => {

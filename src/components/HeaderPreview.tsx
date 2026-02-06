@@ -3,10 +3,6 @@ import {
 	contourDebugResultStore,
 	highPassDebugResultStore,
 	imageStore,
-	phase0DebugResultStore,
-	phase1DebugResultStore,
-	phase2DebugResultStore,
-	phase3DebugResultStore,
 	thresholdDebugResultStore,
 } from "../store";
 
@@ -17,10 +13,6 @@ export const HeaderPreview = () => {
 	const contourDebug = useStore(contourDebugResultStore);
 	const highPassDebug = useStore(highPassDebugResultStore);
 	const thresholdDebug = useStore(thresholdDebugResultStore);
-	const p0 = useStore(phase0DebugResultStore);
-	const p1 = useStore(phase1DebugResultStore);
-	const p2 = useStore(phase2DebugResultStore);
-	const p3 = useStore(phase3DebugResultStore);
 
 	if (!image) return null;
 
@@ -64,42 +56,6 @@ export const HeaderPreview = () => {
 					className="preview-image"
 					style={commonStyle}
 					title="Contours"
-				/>
-			)}
-			{p0 && debug && (
-				<img
-					src={p0}
-					alt="P0"
-					className="preview-image"
-					style={commonStyle}
-					title="Phase 0: Stats"
-				/>
-			)}
-			{p1 && debug && (
-				<img
-					src={p1}
-					alt="P1"
-					className="preview-image"
-					style={commonStyle}
-					title="Phase 1: Easy Lines"
-				/>
-			)}
-			{p2 && debug && (
-				<img
-					src={p2}
-					alt="P2"
-					className="preview-image"
-					style={commonStyle}
-					title="Phase 2: Flat Areas"
-				/>
-			)}
-			{p3 && debug && (
-				<img
-					src={p3}
-					alt="P3"
-					className="preview-image"
-					style={commonStyle}
-					title="Phase 3: Final Resolution"
 				/>
 			)}
 		</div>

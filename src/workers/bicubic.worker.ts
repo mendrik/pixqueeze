@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { expose } from "comlink";
-import { processBicubic } from "./scalers/bicubic";
 import type { RawImageData, ScalingOptions } from "../types";
+import { processBicubic } from "./scalers/bicubic";
 
 const api = {
 	processBicubic: async (

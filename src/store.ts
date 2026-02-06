@@ -19,7 +19,3 @@ export const contourDebugResultStore = atom<string | null>(null);
 export const highPassDebugResultStore = atom<string | null>(null);
 export const thresholdDebugResultStore = atom<string | null>(null);
 export const contourOverlayStore = atom<boolean>(false);
-export const phase0DebugResultStore = atom<string | null>(null);
-export const phase1DebugResultStore = atom<string | null>(null);
-export const phase2DebugResultStore = atom<string | null>(null);
-export const phase3DebugResultStore = atom<string | null>(null);

@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 import { expose } from "comlink";
+import type { RawImageData, ScalingOptions } from "../types";
 import { processEdgePriorityBase } from "./scalers/edge-priority";
 import { ensureRawImageData } from "./utils";
-import type { RawImageData, ScalingOptions } from "../types";
 
 const api = {
 	processEdgePriority: async (

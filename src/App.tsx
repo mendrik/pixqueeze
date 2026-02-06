@@ -1,7 +1,6 @@
 import { useStore } from "@nanostores/react";
 import { useCallback, useEffect } from "react";
 import { SCALERS } from "./algorithms";
-import { ContourDebugScaler } from "./algorithms/contour-debug-scaler";
 import logo from "./assets/fox-clean.png";
 import { Controls } from "./components/Controls";
 import { ResultsView } from "./components/ResultsView";
@@ -132,12 +131,11 @@ export const App = () => {
 		try {
 			const results: Record<string, string> = {};
 
-			// Run Contour Debug independently
-			ContourDebugScaler.process(image, targetW, targetH).then((res) => {
-				contourDebugResultStore.set(res.contour);
-				highPassDebugResultStore.set(res.highPass);
-				thresholdDebugResultStore.set(res.threshold);
-			});
+			// Contour debug moved to EdgePriorityScaler internal debug if needed
+			// Stores reset above
+			contourDebugResultStore.set(null);
+			highPassDebugResultStore.set(null);
+			thresholdDebugResultStore.set(null);
 
 			for (const scaler of SCALERS) {
 				results[scaler.id] = await scaler.process(image, targetW, targetH, {
