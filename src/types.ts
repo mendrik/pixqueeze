@@ -1,21 +1,23 @@
-export interface PaletteColor {
-	r: number;
-	g: number;
-	b: number;
-}
-
-export type DeblurMethod = "none" | "wavelet" | "bilateral";
+export type DeblurMethod = "none" | "bilateral" | "wavelet";
 
 export interface ScalingOptions {
+	// General options
+	onProgress?: (progress: number) => void;
+
+	// Edge Priority / Contour Scaler options
 	superpixelThreshold?: number;
+
+	// Sharpener options
+	deblurMethod?: DeblurMethod;
 	bilateralStrength?: number;
 	waveletStrength?: number;
-	deblurMethod?: DeblurMethod;
 	maxColorsPerShade?: number;
-	overlayContours?: boolean;
+
+	// Contrast Aware options
 	debugContrastAware?: boolean;
-	onProgress?: (p: number) => void;
 }
+
+export type PaletteColor = { r: number; g: number; b: number; count: number };
 
 export interface RawImageData {
 	data: Uint8ClampedArray;
@@ -34,71 +36,74 @@ export interface ScalingAlgorithm {
 	) => Promise<string>;
 }
 
-export interface ScalerWorkerApi {
+// Split Worker APIs for individual workers
+
+export interface NearestWorkerApi {
 	processNearest: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
 		options?: ScalingOptions,
 	) => Promise<RawImageData>;
+}
+
+export interface BicubicWorkerApi {
 	processBicubic: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
 		options?: ScalingOptions,
 	) => Promise<RawImageData>;
+}
 
-	processPaletteArea: (
-		input: RawImageData | ImageBitmap,
-		targetW: number,
-		targetH: number,
-		palette: PaletteColor[],
-		options?: ScalingOptions,
-	) => Promise<RawImageData>;
+export interface EdgePriorityWorkerApi {
 	processEdgePriority: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		threshold: number,
 		options?: ScalingOptions,
 	) => Promise<RawImageData>;
+}
 
+export interface SharpenerWorkerApi {
 	processSharpener: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		threshold: number,
-		bilateralStrength: number,
-		waveletStrength: number,
-		deblurMethod: DeblurMethod,
-		maxColorsPerShade: number,
 		options?: ScalingOptions,
 	) => Promise<RawImageData>;
+}
 
-	extractPalette: (
-		input: RawImageData | ImageBitmap,
-		maxColors: number,
-	) => Promise<PaletteColor[]>;
-	processContourDebug: (
-		input: RawImageData | ImageBitmap,
-		targetW: number,
-		targetH: number,
-	) => Promise<{
-		contour: RawImageData;
-		highPass: RawImageData;
-		threshold: RawImageData;
-	}>;
+export interface ContrastAwareWorkerApi {
+	// Updated return type to support debug phases
 	processContrastAware: (
 		input: RawImageData | ImageBitmap,
 		targetW: number,
 		targetH: number,
-		threshold: number,
 		options?: ScalingOptions,
-	) => Promise<{
-		result: RawImageData;
-		phase0?: RawImageData;
-		phase1?: RawImageData;
-		phase2?: RawImageData;
-		phase3?: RawImageData;
-	}>;
+	) => Promise<
+		| RawImageData
+		| {
+				result: RawImageData;
+				debugPhases?: {
+					phase0?: RawImageData;
+					phase1?: RawImageData;
+					phase2?: RawImageData;
+					phase3?: RawImageData;
+				};
+		  }
+	>;
+}
+
+// Legacy monolithic API (can be removed later or kept for compatibility if needed)
+export interface ScalerWorkerApi
+	extends NearestWorkerApi,
+		BicubicWorkerApi,
+		EdgePriorityWorkerApi,
+		SharpenerWorkerApi,
+		ContrastAwareWorkerApi {
+	// These were in the old monolithic interface but implemented?
+	// processPaletteArea // removed from monolithic worker
+	// extractPalette // removed from monolithic worker
+	// processContourDebug // removed from monolithic worker
 }

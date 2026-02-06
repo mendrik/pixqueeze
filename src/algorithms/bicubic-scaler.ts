@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import type {
-	ScalerWorkerApi,
+	BicubicWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
 } from "../types";
@@ -17,9 +17,9 @@ export const BicubicScaler: ScalingAlgorithm = {
 		const bitmap = await createImageBitmap(image);
 
 		const workerInstance = new (
-			await import("../workers/scaler.worker?worker")
+			await import("../workers/bicubic.worker?worker")
 		).default();
-		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
+		const api = Comlink.wrap<BicubicWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options

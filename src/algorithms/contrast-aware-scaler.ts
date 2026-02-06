@@ -6,8 +6,8 @@ import {
 	phase3DebugResultStore,
 } from "../store";
 import type {
+	ContrastAwareWorkerApi,
 	RawImageData,
-	ScalerWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
 } from "../types";
@@ -22,8 +22,6 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 		targetH: number,
 		options?: ScalingOptions,
 	): Promise<string> => {
-		const threshold = options?.superpixelThreshold ?? 35;
-
 		const srcW = image.naturalWidth;
 		const srcH = image.naturalHeight;
 
@@ -36,9 +34,9 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 		const srcData = srcCtx.getImageData(0, 0, srcW, srcH).data;
 
 		const workerInstance = new (
-			await import("../workers/scaler.worker?worker")
+			await import("../workers/contrast-aware.worker?worker")
 		).default();
-		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
+		const api = Comlink.wrap<ContrastAwareWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options
@@ -55,19 +53,17 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 				),
 				targetW,
 				targetH,
-				threshold,
 				{ ...workerOptions, debugContrastAware: true },
 			);
 
-			const rawData = res.result;
-
+			// Helper to convert RawImageData to DataURL for debug stores
 			const toDataURL = (raw: RawImageData) => {
 				const c = document.createElement("canvas");
 				c.width = raw.width;
 				c.height = raw.height;
 				const ctx = c.getContext("2d");
-				if (!ctx) return null;
-				// Rebuild a fresh ArrayBuffer no matter what the worker returned
+				if (!ctx) return "";
+				// Rebuild a fresh ArrayBuffer
 				const arrayBuffer = new ArrayBuffer(raw.data.byteLength);
 				new Uint8Array(arrayBuffer).set(new Uint8Array(raw.data.buffer));
 				const safeData = new Uint8ClampedArray(arrayBuffer);
@@ -76,10 +72,30 @@ export const ContrastAwareScaler: ScalingAlgorithm = {
 				return c.toDataURL();
 			};
 
-			if (res.phase0) phase0DebugResultStore.set(toDataURL(res.phase0));
-			if (res.phase1) phase1DebugResultStore.set(toDataURL(res.phase1));
-			if (res.phase2) phase2DebugResultStore.set(toDataURL(res.phase2));
-			if (res.phase3) phase3DebugResultStore.set(toDataURL(res.phase3));
+			// Handle union type: could be RawImageData or { result, debugPhases }
+			// The worker wrapper logic I added returns { result, debugPhases } if debugContrastAware is true.
+			// Since we set debugContrastAware: true, we expect the object.
+			// But types say it's a union. We can cast or check.
+
+			let rawData: RawImageData;
+
+			// Helper to check if it's the extended object
+			if ("debugPhases" in res) {
+				rawData = res.result;
+				const phases = res.debugPhases;
+				if (phases) {
+					if (phases.phase0)
+						phase0DebugResultStore.set(toDataURL(phases.phase0));
+					if (phases.phase1)
+						phase1DebugResultStore.set(toDataURL(phases.phase1));
+					if (phases.phase2)
+						phase2DebugResultStore.set(toDataURL(phases.phase2));
+					if (phases.phase3)
+						phase3DebugResultStore.set(toDataURL(phases.phase3));
+				}
+			} else {
+				rawData = res as RawImageData;
+			}
 
 			const canvas = document.createElement("canvas");
 			canvas.width = targetW;

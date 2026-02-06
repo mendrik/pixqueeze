@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import type {
-	ScalerWorkerApi,
+	EdgePriorityWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
 } from "../types";
@@ -29,9 +29,9 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 		const srcData = srcCtx.getImageData(0, 0, srcW, srcH).data;
 
 		const workerInstance = new (
-			await import("../workers/scaler.worker?worker")
+			await import("../workers/edge-priority.worker?worker")
 		).default();
-		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
+		const api = Comlink.wrap<EdgePriorityWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options
@@ -48,8 +48,10 @@ export const EdgePriorityScaler: ScalingAlgorithm = {
 				),
 				targetW,
 				targetH,
-				threshold,
-				workerOptions,
+				{
+					...workerOptions,
+					superpixelThreshold: threshold,
+				},
 			);
 
 			const canvas = document.createElement("canvas");

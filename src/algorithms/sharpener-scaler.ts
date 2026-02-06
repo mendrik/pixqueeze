@@ -1,9 +1,9 @@
 import * as Comlink from "comlink";
 import type {
 	DeblurMethod,
-	ScalerWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
+	SharpenerWorkerApi,
 } from "../types";
 
 /**
@@ -41,9 +41,9 @@ export const SharpenerScaler: ScalingAlgorithm = {
 		const srcData = srcImageData.data;
 
 		const workerInstance = new (
-			await import("../workers/scaler.worker?worker")
+			await import("../workers/sharpener.worker?worker")
 		).default();
-		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
+		const api = Comlink.wrap<SharpenerWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options
@@ -60,12 +60,14 @@ export const SharpenerScaler: ScalingAlgorithm = {
 				),
 				targetW,
 				targetH,
-				threshold,
-				bilateralStrength,
-				waveletStrength,
-				deblurMethod,
-				maxColorsPerShade,
-				workerOptions,
+				{
+					...workerOptions,
+					superpixelThreshold: threshold,
+					deblurMethod,
+					bilateralStrength,
+					waveletStrength,
+					maxColorsPerShade,
+				},
 			);
 
 			const canvas = document.createElement("canvas");

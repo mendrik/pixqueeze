@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import type {
-	ScalerWorkerApi,
+	NearestWorkerApi,
 	ScalingAlgorithm,
 	ScalingOptions,
 } from "../types";
@@ -17,9 +17,9 @@ export const NearestScaler: ScalingAlgorithm = {
 		const bitmap = await createImageBitmap(image);
 
 		const workerInstance = new (
-			await import("../workers/scaler.worker?worker")
+			await import("../workers/nearest.worker?worker")
 		).default();
-		const api = Comlink.wrap<ScalerWorkerApi>(workerInstance);
+		const api = Comlink.wrap<NearestWorkerApi>(workerInstance);
 
 		try {
 			// Strip non-transferable options

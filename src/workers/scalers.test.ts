@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processContrastAwareBase } from "./scaler.core";
+import { processContrastAwareBase } from "./scalers/contrast-aware";
 
 // Define RawImageData type if not imported, or import from types if possible
 // Assuming simple structure for testing
