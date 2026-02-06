@@ -132,7 +132,7 @@ export const Controls = ({
 				</div>
 				<input
 					type="range"
-					min="1"
+					min="0"
 					max="20"
 					step="1"
 					value={maxColorsPerShade}

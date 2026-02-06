@@ -563,6 +563,10 @@ const processSharpener = (
 		processed = applyWaveletSharpen(scaled, waveletStrength, 0.1);
 	}
 
+	if (maxColorsPerShade === 0) {
+		return processed;
+	}
+
 	// 3. Optimize Palette
 	// Extract palette from the PROCESSED image
 	const extractedPalette = extractPalette({
@@ -1070,20 +1074,16 @@ const transferRaw = (raw: RawImageData) =>
 	Comlink.transfer(raw, [raw.data.buffer]) as unknown as RawImageData;
 
 const api: ScalerWorkerApi = {
-	processNearest: async (input, targetW, targetH, options) => {
+	processNearest: async (input, targetW, targetH, _options) => {
 		const result = processNearest(input, targetW, targetH);
 		return transferRaw(result);
 	},
-	processBicubic: async (input, targetW, targetH, options) => {
+	processBicubic: async (input, targetW, targetH, _options) => {
 		const result = processBicubic(input, targetW, targetH);
 		return transferRaw(result);
 	},
 	processEdgePriority: async (input, targetW, targetH, threshold, options) => {
 		const result = processEdgePriorityBase(input, targetW, targetH, threshold);
-		if (options?.overlayContours) {
-			// EdgePriority receives RawImageData directly, no conversion needed
-			superimposeContour(result, input);
-		}
 		return transferRaw(result);
 	},
 	processSharpener: async (
@@ -1113,7 +1113,7 @@ const api: ScalerWorkerApi = {
 		}
 		return transferRaw(result);
 	},
-	processPaletteArea: async (input, targetW, targetH, palette, options) => {
+	processPaletteArea: async (input, targetW, targetH, palette, _options) => {
 		const result = processPaletteArea(input, targetW, targetH, palette);
 		return transferRaw(result);
 	},
