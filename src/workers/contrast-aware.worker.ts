@@ -24,7 +24,7 @@ const api = {
 
 		if (options?.debugContrastAware) {
 			return {
-				...result,
+				result,
 				debugPhases: { phase0, phase1, phase2, phase3 },
 			} as any;
 		}
