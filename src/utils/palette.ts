@@ -137,3 +137,68 @@ export function reducePaletteToCount(
 
 	return currentPalette;
 }
+
+/** Converts RGB to HSL. */
+export function rgbToHsl(r: number, g: number, b: number) {
+	const valR = r / 255;
+	const valG = g / 255;
+	const valB = b / 255;
+
+	const max = Math.max(valR, valG, valB);
+	const min = Math.min(valR, valG, valB);
+	let h = 0;
+	const l = (max + min) / 2;
+
+	if (max !== min) {
+		const d = max - min;
+		if (max === valR) {
+			h = (valG - valB) / d + (valG < valB ? 6 : 0);
+		} else if (max === valG) {
+			h = (valB - valR) / d + 2;
+		} else {
+			h = (valR - valG) / d + 4;
+		}
+		h /= 6;
+	}
+
+	return { h, l };
+}
+
+/** Reduces palette by partitioning into hue/lightness bands and keeping top N per band. */
+export function optimizePaletteBanded(
+	palette: RGB[],
+	maxColorsPerBand: number,
+): RGB[] {
+	if (maxColorsPerBand === 0) return palette;
+
+	// 1. Partition into bands
+	// Hue bands: 12 slices (30 degrees each)
+	// Lightness bands: 4 slices (0-0.25, 0.25-0.5, etc)
+	const bands: Record<string, RGB[]> = {};
+
+	for (const color of palette) {
+		const { h, l } = rgbToHsl(color.r, color.g, color.b);
+		const hueBand = Math.floor(h * 12); // 0-11
+		const lightBand = Math.floor(l * 4); // 0-3
+		const key = `${hueBand}-${lightBand}`;
+
+		if (!bands[key]) bands[key] = [];
+		bands[key].push(color);
+	}
+
+	const optimized: RGB[] = [];
+
+	// 2. Reduce each band
+	for (const key in bands) {
+		const group = bands[key];
+		// Sort by frequency (count) descending
+		group.sort((a, b) => (b.count || 0) - (a.count || 0));
+
+		// Keep top maxColorsPerBand
+		for (let i = 0; i < Math.min(group.length, maxColorsPerBand); i++) {
+			optimized.push(group[i]);
+		}
+	}
+
+	return optimized;
+}

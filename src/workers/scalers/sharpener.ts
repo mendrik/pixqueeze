@@ -1,5 +1,5 @@
 import type { DeblurMethod, RawImageData } from "../../types";
-import { extractPalette } from "../../utils/palette";
+import { extractPalette, optimizePaletteBanded } from "../../utils/palette";
 import { softLimit } from "../utils";
 
 const applyWaveletSharpen = (
@@ -259,7 +259,12 @@ export const processSharpener = (
 		return processed;
 	}
 
-	const optimizedPalette = extractPalette(processed);
+	const extractedPalette = extractPalette(processed);
+	const optimizedPalette = optimizePaletteBanded(
+		extractedPalette,
+		maxColorsPerShade,
+	);
+
 	const palette32 = new Uint32Array(optimizedPalette.length);
 	for (let i = 0; i < optimizedPalette.length; i++) {
 		const p = optimizedPalette[i];
