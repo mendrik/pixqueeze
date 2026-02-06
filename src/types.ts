@@ -113,5 +113,9 @@ export interface ScalerWorkerApi {
 		},
 		targetW: number,
 		targetH: number,
-	): Promise<RawImageData>;
+	): Promise<{
+		contour: RawImageData;
+		highPass: RawImageData;
+		threshold: RawImageData;
+	}>;
 }

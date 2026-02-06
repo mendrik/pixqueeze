@@ -16,4 +16,6 @@ export const deblurMethodStore = atom<DeblurMethod>("wavelet");
 export const maxEdgeStore = atom<number>(128);
 export const maxColorsPerShadeStore = atom<number>(0);
 export const contourDebugResultStore = atom<string | null>(null);
+export const highPassDebugResultStore = atom<string | null>(null);
+export const thresholdDebugResultStore = atom<string | null>(null);
 export const contourOverlayStore = atom<boolean>(false);

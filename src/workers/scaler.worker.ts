@@ -654,7 +654,7 @@ const detectContours = (input: {
 		}
 	}
 
-	// 3. Auto-Tuned Threshold
+	// 3. Autotuned Local Threshold (GIMP-like)
 	let negSum = 0;
 	let negCount = 0;
 	for (let i = 0; i < w * h; i++) {
@@ -673,13 +673,81 @@ const detectContours = (input: {
 		}
 	}
 	const negStdDev = negCount > 0 ? Math.sqrt(negVarSum / negCount) : 0;
-
-	const threshold = negMean - negStdDev * 0.5;
+	const globalDeviation = negStdDev;
 
 	const candidates = new Uint8Array(w * h);
+	// Local window radius
+	const radius = 3; // 5x5 window
+
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			const idx = y * w + x;
+
+			// Compute local mean in the 5x5 window
+			let localSum = 0;
+			let localCount = 0;
+
+			for (let ky = -radius; ky <= radius; ky++) {
+				for (let kx = -radius; kx <= radius; kx++) {
+					const nx = x + kx;
+					const ny = y + ky;
+					if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+						localSum += hpf[ny * w + nx];
+						localCount++;
+					}
+				}
+			}
+
+			const localMean = localCount > 0 ? localSum / localCount : 0;
+
+			// Use global stats to determine the "gap" needed from local context
+			if (hpf[idx] < localMean - globalDeviation * 0.5) {
+				candidates[idx] = 1;
+			}
+		}
+	}
+
+	// 3.5 Noise Removal (Remove tiny clusters)
+	const visitedNoise = new Uint8Array(w * h);
+	const noiseStack: number[] = [];
+	const cluster: number[] = [];
+	const MIN_CLUSTER_SIZE = 30;
+
 	for (let i = 0; i < w * h; i++) {
-		if (hpf[i] < threshold) {
-			candidates[i] = 1;
+		if (candidates[i] === 1 && visitedNoise[i] === 0) {
+			noiseStack.push(i);
+			cluster.length = 0;
+			visitedNoise[i] = 1;
+			// Simple flood fill
+			while (noiseStack.length > 0) {
+				const curr = noiseStack.pop();
+				if (curr === undefined) break; // Should not happen with valid logic
+				cluster.push(curr);
+
+				const cx = curr % w;
+				const cy = (curr / w) | 0;
+
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						if (dx === 0 && dy === 0) continue;
+						const nx = cx + dx;
+						const ny = cy + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (candidates[nIdx] === 1 && visitedNoise[nIdx] === 0) {
+								visitedNoise[nIdx] = 1;
+								noiseStack.push(nIdx);
+							}
+						}
+					}
+				}
+			}
+
+			if (cluster.length < MIN_CLUSTER_SIZE) {
+				for (const idx of cluster) {
+					candidates[idx] = 0;
+				}
+			}
 		}
 	}
 
@@ -920,27 +988,316 @@ const processContourDebug = (
 	input: { data: Uint8ClampedArray; width: number; height: number },
 	_targetW: number,
 	_targetH: number,
-): RawImageData => {
+): {
+	contour: RawImageData;
+	highPass: RawImageData;
+	threshold: RawImageData;
+} => {
 	const w = input.width;
 	const h = input.height;
 	const srcData32 = new Uint32Array(input.data.buffer);
-	const output = detectContours(input);
 
-	// Render Output
-	const outData = new Uint8ClampedArray(w * h * 4);
-	const outData32 = new Uint32Array(outData.buffer);
-
+	// 1. Luminance
+	const luminance = new Float32Array(w * h);
 	for (let i = 0; i < w * h; i++) {
-		// Skip edges
-		const x = i % w;
-		if (x === 0 || x === w - 1) continue;
+		const val = srcData32[i];
+		const r = val & 0xff;
+		const g = (val >> 8) & 0xff;
+		const b = (val >> 16) & 0xff;
+		luminance[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+	}
 
-		if (output[i] === 1) {
-			outData32[i] = srcData32[i]; // Source color
+	// 2. High Pass Filter (Laplacian)
+	const hpf = new Float32Array(w * h);
+	let _minResp = 0;
+	let _maxResp = 0;
+
+	for (let y = 1; y < h - 1; y++) {
+		for (let x = 1; x < w - 1; x++) {
+			const idx = y * w + x;
+			let sum = 0;
+
+			// Center
+			sum += luminance[idx] * 8;
+
+			// Neighbors
+			sum -= luminance[(y - 1) * w + (x - 1)];
+			sum -= luminance[(y - 1) * w + x];
+			sum -= luminance[(y - 1) * w + (x + 1)];
+			sum -= luminance[y * w + (x - 1)];
+			sum -= luminance[y * w + (x + 1)];
+			sum -= luminance[(y + 1) * w + (x - 1)];
+			sum -= luminance[(y + 1) * w + x];
+			sum -= luminance[(y + 1) * w + (x + 1)];
+
+			hpf[idx] = sum;
+			if (sum < _minResp) _minResp = sum;
+			if (sum > _maxResp) _maxResp = sum;
 		}
 	}
 
-	return { data: outData, width: w, height: h };
+	// 3. Autotuned Local Threshold (GIMP-like)
+	let negSum = 0;
+	let negCount = 0;
+	for (let i = 0; i < w * h; i++) {
+		if (hpf[i] < 0) {
+			negSum += hpf[i];
+			negCount++;
+		}
+	}
+
+	const negMean = negCount > 0 ? negSum / negCount : 0;
+
+	let negVarSum = 0;
+	for (let i = 0; i < w * h; i++) {
+		if (hpf[i] < 0) {
+			negVarSum += (hpf[i] - negMean) ** 2;
+		}
+	}
+	const negStdDev = negCount > 0 ? Math.sqrt(negVarSum / negCount) : 0;
+	const globalDeviation = negStdDev;
+
+	const candidates = new Uint8Array(w * h);
+	const radius = 3;
+
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			const idx = y * w + x;
+
+			// Compute local mean
+			let localSum = 0;
+			let localCount = 0;
+
+			for (let ky = -radius; ky <= radius; ky++) {
+				for (let kx = -radius; kx <= radius; kx++) {
+					const nx = x + kx;
+					const ny = y + ky;
+					if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+						localSum += hpf[ny * w + nx];
+						localCount++;
+					}
+				}
+			}
+
+			const localMean = localCount > 0 ? localSum / localCount : 0;
+
+			if (hpf[idx] < localMean - globalDeviation * 0.5) {
+				candidates[idx] = 1;
+			}
+		}
+	}
+
+	// 3.5 Noise Removal
+	const visitedNoise = new Uint8Array(w * h);
+	const noiseStack: number[] = [];
+	const cluster: number[] = [];
+	const MIN_CLUSTER_SIZE = 30;
+
+	for (let i = 0; i < w * h; i++) {
+		if (candidates[i] === 1 && visitedNoise[i] === 0) {
+			noiseStack.push(i);
+			cluster.length = 0;
+			visitedNoise[i] = 1;
+
+			while (noiseStack.length > 0) {
+				const curr = noiseStack.pop();
+				if (curr === undefined) break;
+				cluster.push(curr);
+
+				const cx = curr % w;
+				const cy = (curr / w) | 0;
+
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						if (dx === 0 && dy === 0) continue;
+						const nx = cx + dx;
+						const ny = cy + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (candidates[nIdx] === 1 && visitedNoise[nIdx] === 0) {
+								visitedNoise[nIdx] = 1;
+								noiseStack.push(nIdx);
+							}
+						}
+					}
+				}
+			}
+
+			if (cluster.length < MIN_CLUSTER_SIZE) {
+				for (const idx of cluster) {
+					candidates[idx] = 0;
+				}
+			}
+		}
+	}
+
+	// 4. Smart Gap Bridging
+	const bridged = new Uint8Array(w * h);
+	bridged.set(candidates);
+	// ... (Bridging logic omitted for brevity in debug view if not needed strictly for visualization, but let's assume we want final contours)
+	// Actually, let's just use the final output from detectContours logic for consistent "Contour" view.
+	// But we need the intermediate buffers.
+	// Re-implementing simplified DetectContours here to avoid duplicating logic or refactoring the whole file right now.
+	// The above logic IS the detectContours logic up to noise removal.
+
+	// Let's generate the images.
+
+	// Image 1: Contour (Final result on top of source)
+	// Reuse detectContours? No, we have the state here. Let's just finish the bridging pass quickly or skip it for "Threshold" view?
+	// The "Threshold" view usually implies the binary map BEFORE bridging.
+	// The "Contour" view implies the final result.
+
+	// Let's finish bridging for "Contour" view.
+	for (let y = 1; y < h - 1; y++) {
+		for (let x = 1; x < w - 1; x++) {
+			const idx = y * w + x;
+			if (candidates[idx] === 0) continue;
+
+			let neighbors = 0;
+			for (let dy = -1; dy <= 1; dy++) {
+				for (let dx = -1; dx <= 1; dx++) {
+					if (dx === 0 && dy === 0) continue;
+					if (candidates[(y + dy) * w + (x + dx)] === 1) neighbors++;
+				}
+			}
+
+			if (neighbors <= 1) {
+				let bestDistSq = 100;
+				let bestNIdx = -1;
+
+				for (let dy = -2; dy <= 2; dy++) {
+					for (let dx = -2; dx <= 2; dx++) {
+						if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue;
+						const nx = x + dx;
+						const ny = y + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (candidates[nIdx] === 1) {
+								const distSq = dx * dx + dy * dy;
+								if (distSq < bestDistSq) {
+									bestDistSq = distSq;
+									bestNIdx = nIdx;
+								}
+							}
+						}
+					}
+				}
+
+				if (bestNIdx !== -1) {
+					const x1 = x;
+					const y1 = y;
+					const x2 = bestNIdx % w;
+					const y2 = (bestNIdx / w) | 0;
+
+					const dx = Math.abs(x2 - x1);
+					const dy = Math.abs(y2 - y1);
+					const sx = x1 < x2 ? 1 : -1;
+					const sy = y1 < y2 ? 1 : -1;
+					let err = dx - dy;
+
+					let cx = x1;
+					let cy = y1;
+
+					for (let k = 0; k < 5; k++) {
+						bridged[cy * w + cx] = 1;
+						if (cx === x2 && cy === y2) break;
+						const e2 = 2 * err;
+						if (e2 > -dy) {
+							err -= dy;
+							cx += sx;
+						}
+						if (e2 < dx) {
+							err += dx;
+							cy += sy;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Prune Short Paths
+	const output = new Uint8Array(w * h);
+	const visited = new Uint8Array(w * h);
+	const stack: number[] = [];
+	const component: number[] = [];
+	const MIN_COMPONENT_SIZE = 3;
+
+	for (let i = 0; i < w * h; i++) {
+		if (bridged[i] === 1 && visited[i] === 0) {
+			stack.push(i);
+			component.length = 0;
+			visited[i] = 1;
+
+			while (stack.length > 0) {
+				const curr = stack.pop();
+				if (curr === undefined) break;
+				component.push(curr);
+
+				const cx = curr % w;
+				const cy = (curr / w) | 0;
+
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						if (dx === 0 && dy === 0) continue;
+						const nx = cx + dx;
+						const ny = cy + dy;
+						if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+							const nIdx = ny * w + nx;
+							if (bridged[nIdx] === 1 && visited[nIdx] === 0) {
+								visited[nIdx] = 1;
+								stack.push(nIdx);
+							}
+						}
+					}
+				}
+			}
+
+			if (component.length >= MIN_COMPONENT_SIZE) {
+				for (const idx of component) {
+					output[idx] = 1;
+				}
+			}
+		}
+	}
+
+	// --- Generate Output Images ---
+
+	// 1. Contour Image (Result)
+	const contourOut = new Uint8ClampedArray(w * h * 4);
+	const contourOut32 = new Uint32Array(contourOut.buffer);
+	for (let i = 0; i < w * h; i++) {
+		if (output[i] === 1) {
+			contourOut32[i] = srcData32[i];
+		}
+	}
+
+	// 2. High Pass Image (Grayscale)
+	const hpOut = new Uint8ClampedArray(w * h * 4);
+	const hpOut32 = new Uint32Array(hpOut.buffer);
+	// Normalize visualization
+	for (let i = 0; i < w * h; i++) {
+		// HPF values are roughly -255*8 to 255*8, usually much smaller.
+		// Shift by 128 to show negative values.
+		const val = Math.max(0, Math.min(255, hpf[i] + 128)) | 0;
+		hpOut32[i] = (255 << 24) | (val << 16) | (val << 8) | val;
+	}
+
+	// 3. Threshold Image (B/W)
+	// Visualize 'candidates' (the binary map before bridging)
+	const threshOut = new Uint8ClampedArray(w * h * 4);
+	const threshOut32 = new Uint32Array(threshOut.buffer);
+	for (let i = 0; i < w * h; i++) {
+		const val = candidates[i] === 1 ? 255 : 0; // Invert? No, 1 is edge (white)
+		// Usually edges are white on black in masks.
+		threshOut32[i] = (255 << 24) | (val << 16) | (val << 8) | val;
+	}
+
+	return {
+		contour: { data: contourOut, width: w, height: h },
+		highPass: { data: hpOut, width: w, height: h },
+		threshold: { data: threshOut, width: w, height: h },
+	};
 };
 
 const processPaletteArea = (
@@ -1073,6 +1430,21 @@ const processPaletteArea = (
 const transferRaw = (raw: RawImageData) =>
 	Comlink.transfer(raw, [raw.data.buffer]) as unknown as RawImageData;
 
+const transferContourDebug = (result: {
+	contour: RawImageData;
+	highPass: RawImageData;
+	threshold: RawImageData;
+}) =>
+	Comlink.transfer(result, [
+		result.contour.data.buffer,
+		result.highPass.data.buffer,
+		result.threshold.data.buffer,
+	]) as unknown as {
+		contour: RawImageData;
+		highPass: RawImageData;
+		threshold: RawImageData;
+	};
+
 const api: ScalerWorkerApi = {
 	processNearest: async (input, targetW, targetH, _options) => {
 		const result = processNearest(input, targetW, targetH);
@@ -1119,7 +1491,7 @@ const api: ScalerWorkerApi = {
 	},
 	processContourDebug: async (input, targetW, targetH) => {
 		const result = processContourDebug(input, targetW, targetH);
-		return transferRaw(result);
+		return transferContourDebug(result);
 	},
 };
 
