@@ -6,6 +6,7 @@ export interface ScalingOptions {
 
 	// Edge Priority / Contour Scaler options
 	superpixelThreshold?: number;
+	overlayContours?: boolean;
 
 	// Sharpener options
 	deblurMethod?: DeblurMethod;
