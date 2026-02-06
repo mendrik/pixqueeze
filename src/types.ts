@@ -87,4 +87,11 @@ export interface ScalerWorkerApi {
 		highPass: RawImageData;
 		threshold: RawImageData;
 	}>;
+	processContrastAware: (
+		input: RawImageData | ImageBitmap,
+		targetW: number,
+		targetH: number,
+		threshold: number,
+		options?: ScalingOptions,
+	) => Promise<RawImageData>;
 }
