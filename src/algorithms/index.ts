@@ -1,4 +1,4 @@
-isaimport type { ScalingAlgorithm } from "../types";
+import type { ScalingAlgorithm } from "../types";
 import { BicubicScaler } from "./bicubic-scaler";
 import { EdgePriorityScaler } from "./edge-priority-scaler";
 import { NearestScaler } from "./nearest-scaler";
