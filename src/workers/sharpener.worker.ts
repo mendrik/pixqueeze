@@ -21,6 +21,7 @@ const api = {
 			options?.bilateralStrength || 0,
 			options?.waveletStrength || 0,
 			options?.maxColorsPerShade || 0,
+			options?.superpixelThreshold || 10,
 		);
 
 		if (options?.overlayContours) {

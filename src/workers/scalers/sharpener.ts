@@ -202,40 +202,7 @@ const findClosestColor = (
 	return bestColor;
 };
 
-// Internal bicubic scale for Sharpener (re-implemented or imported?)
-// For now, implementing simple bicubic here or using shared if available?
-// processBicubic from 'bicubic.ts' takes ImageBitmap which is not ideal for internal pipeline
-// We need a raw-to-raw bicubic function.
-// Let's implement lightweight raw bicubic here or export the one from bicubic.ts if it was raw-capable.
-// processBicubic in bicubic.ts uses OffscreenCanvas which works with ImageBitmap.
-// Sharpener pipeline: Raw -> Canvas Scale -> Raw -> Sharpen.
-// So we can use OffscreenCanvas here too if we maintain consistency.
-
-const applyBicubicScaling = (
-	input: RawImageData,
-	targetW: number,
-	targetH: number,
-): RawImageData => {
-	// Convert RawImageData to ImageData for Canvas
-	const canvas = new OffscreenCanvas(targetW, targetH);
-	const ctx = canvas.getContext("2d");
-	if (!ctx) throw new Error("Context failed");
-
-	// Create temp canvas for input
-	const srcCanvas = new OffscreenCanvas(input.width, input.height);
-	const srcCtx = srcCanvas.getContext("2d");
-	if (!srcCtx) throw new Error("Src Context failed");
-
-	const srcImgData = new ImageData(input.data, input.width, input.height);
-	srcCtx.putImageData(srcImgData, 0, 0);
-
-	ctx.imageSmoothingEnabled = true;
-	ctx.imageSmoothingQuality = "high";
-	ctx.drawImage(srcCanvas, 0, 0, targetW, targetH);
-
-	const out = ctx.getImageData(0, 0, targetW, targetH);
-	return { data: out.data, width: targetW, height: targetH };
-};
+import { processEdgePriorityBase } from "./edge-priority";
 
 export const processSharpener = (
 	input: RawImageData,
@@ -245,8 +212,14 @@ export const processSharpener = (
 	bilateralStrength: number,
 	waveletStrength: number,
 	maxColorsPerShade: number,
+	superpixelThreshold = 10,
 ): RawImageData => {
-	const scaled = applyBicubicScaling(input, targetW, targetH);
+	const scaled = processEdgePriorityBase(
+		input,
+		targetW,
+		targetH,
+		superpixelThreshold,
+	);
 
 	let processed = scaled;
 	if (deblurMethod === "bilateral" && bilateralStrength > 0) {
