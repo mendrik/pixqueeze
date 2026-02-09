@@ -1,4 +1,5 @@
 import { useStore } from "@nanostores/react";
+import { Github } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { SCALERS } from "./algorithms";
 import logo from "./assets/fox-clean.png";
@@ -185,6 +186,18 @@ export const App = () => {
 					</div>
 
 					<Controls onUpload={handleUpload} />
+
+					<footer className="sidebar-footer">
+						<a
+							href="https://github.com/mendrik/pixqueeze"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="github-link"
+						>
+							<Github size={16} />
+							<span>View on GitHub</span>
+						</a>
+					</footer>
 				</div>
 
 				<div className="main-content">
